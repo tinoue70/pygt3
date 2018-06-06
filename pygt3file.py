@@ -192,8 +192,14 @@ class GT3Header:
         self.divl = float(hd[42])
         self.styp = int(hd[43])
         self.coptn = hd[44].strip().decode('UTF-8')
-        self.ioptn = int(hd[45])
-        self.roptn = float(hd[46])
+        if (hd[45].strip().decode('UTF-8') != '' ):
+            self.ioptn = int(hd[45])
+        else:
+            self.ioptn = None
+        if (hd[46].strip().decode('UTF-8') != '' ):
+            self.roptn = float(hd[45])
+        else:
+            self.roptn = None
         self.cdate = hd[59].strip().decode('UTF-8')
         self.csign = hd[60].strip().decode('UTF-8')
         self.mdate = hd[61].strip().decode('UTF-8')
