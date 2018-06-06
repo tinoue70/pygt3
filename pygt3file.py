@@ -166,7 +166,6 @@ class GT3Header:
         pass
 
     def set(self, hd):
-        # print(hd)
         self.dset = hd[1].strip().decode('UTF-8')
         self.cyclic = (self.dset[0]=='C')
         self.item = hd[2].strip().decode('UTF-8')
@@ -187,6 +186,14 @@ class GT3Header:
         self.aend3 = int(hd[36])
         self.dfmt = hd[37].strip().decode('UTF-8')
         self.miss = float(hd[38])
+        self.dmin = float(hd[39])
+        self.dmax = float(hd[40])
+        self.divs = float(hd[41])
+        self.divl = float(hd[42])
+        self.styp = int(hd[43])
+        self.coptn = hd[44].strip().decode('UTF-8')
+        self.ioptn = int(hd[45])
+        self.roptn = float(hd[46])
         self.cdate = hd[59].strip().decode('UTF-8')
         self.csign = hd[60].strip().decode('UTF-8')
         self.mdate = hd[61].strip().decode('UTF-8')
@@ -299,20 +306,27 @@ class GT3File:
     def scan(self):
         tbl = []
         self.rewind()
+        self.num_of_data = 0
         while True:
             self.read_one_header()
             if (self.is_eof):
                 break
             self.skip_one_data()
+            self.num_of_data += 1
             tbl.append([self.current_header.item, self.current_header.time, self.current_header.dfmt])
-        # print('dbg:scan:')
-        # print(tbl)
+        if (self.opt_debug):
+            print('dbg:scan:')
+            print(tbl)
         self.table = pd.DataFrame(tbl)
         self.table.columns = ['item', 'time', 'dfmt']
-        # print(self.table.pivot_table(index='time', aggfunc=[len]))
         self.num_of_times = self.table.pivot_table(index='time', aggfunc=[len]).shape[0]
         self.num_of_items = self.table.pivot_table(index='item', aggfunc=[len]).shape[0]
-        print("(num_of_times,num_of_items)=(%d,%d)" % (self.num_of_times, self.num_of_items))
+        liner = "===== Scan result: ====="
+        print(liner)
+        print("* num_of_data :",self.num_of_data)
+        print("* num_of_times:",self.num_of_times)
+        print("* num_of_items:",self.num_of_items)
+        print("="*len(liner))
         self.rewind()
 
         return None
