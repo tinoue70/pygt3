@@ -304,9 +304,13 @@ class GT3File:
         return None
 
     def scan(self):
+        """ 
+        Scan whole file and create data table, which is pandas.DataFrame instance.
+        Note that file position is on the top after this method.
+        """
         tbl = []
-        self.rewind()
         self.num_of_data = 0
+        self.rewind()
         while True:
             self.read_one_header()
             if (self.is_eof):
@@ -314,6 +318,7 @@ class GT3File:
             self.skip_one_data()
             self.num_of_data += 1
             tbl.append([self.current_header.item, self.current_header.time, self.current_header.dfmt])
+        self.rewind()
         self.table = pd.DataFrame(tbl)
         self.table.columns = ['item', 'time', 'dfmt']
         self.num_of_times = self.table.pivot_table(index='time', aggfunc=[len]).shape[0]
@@ -324,7 +329,6 @@ class GT3File:
         print("* num_of_times:",self.num_of_times)
         print("* num_of_items:",self.num_of_items)
         print("="*len(liner))
-        self.rewind()
 
         return None
 
