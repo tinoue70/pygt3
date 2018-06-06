@@ -166,7 +166,9 @@ class GT3Header:
         pass
 
     def set(self, hd):
+        # print(hd)
         self.dset = hd[1].strip().decode('UTF-8')
+        self.cyclic = (self.dset[0]=='C')
         self.item = hd[2].strip().decode('UTF-8')
         self.titl = (hd[13]+hd[14]).strip().decode('UTF-8')
         self.unit = hd[15].strip().decode('UTF-8')
@@ -219,10 +221,19 @@ class GT3Header:
             print("dset : %s" % str(self.dset))
             print("item : %s[%s]: %s" % (self.item, self.unit, self.titl))
             print("date : %s(%d) with %d[%s]" % (self.date, self.time, self.tdur, self.utim))
-            print("axis : %s[%d:%d] x %s[%d:%d] x %s[%d:%d]"
-                  % (self.aitm1, self.astr1, self.aend1,
-                     self.aitm2, self.astr2, self.aend2,
-                     self.aitm3, self.astr3, self.aend3))
+            if (self.aitm3!=''):
+                print("axis : %s[%d:%d] x %s[%d:%d] x %s[%d:%d]"
+                      % (self.aitm1, self.astr1, self.aend1,
+                         self.aitm2, self.astr2, self.aend2,
+                         self.aitm3, self.astr3, self.aend3))
+            elif (self.aitm2!=''):
+                print("axis : %s[%d:%d] x %s[%d:%d]"
+                      % (self.aitm1, self.astr1, self.aend1,
+                         self.aitm2, self.astr2, self.aend2))
+            else:
+                print("axis : %s[%d:%d]"
+                      % (self.aitm1, self.astr1, self.aend1))
+            print("cycl :", self.cyclic)
             print("dfmt :", self.dfmt)
             print("miss :", self.miss)
             print("size :", self.size)
