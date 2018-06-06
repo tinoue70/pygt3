@@ -3,7 +3,7 @@ from __future__ import print_function
 # import numpy as np
 from pygt3file import GT3File
 import argparse
-
+import sys
 
 class A:
     """ base class for argparse,"""
@@ -34,10 +34,13 @@ parser.parse_args(namespace=a)
 
 file = a.file
 
+print(type(a.numbers))
 if (a.numbers is None):
-    numbers = ()
+    opt_numbers = ()
+    opt_all = True
 else:
-    numbers = tuple(a.numbers)
+    opt_numbers = tuple(a.numbers)
+    opt_all = False
 
 opt_header_only = a.header
 opt_show_table = a.table
@@ -46,26 +49,29 @@ opt_debug = a.debug
 if (opt_debug):
     print("dbg:opt_header_only:", opt_header_only)
     print("dbg:opt_show_table:", opt_show_table)
+    print("dbg:opt_numbers:",opt_numbers)
     print("dbg:file:", file)
 
 f = GT3File(file)
 f.opt_debug = opt_debug
 f.scan()
+
 if (opt_show_table):
     print(f.table.to_string())
-else:
-    while True:
-        f.read_one_header()
-        if (f.is_eof):
-            break
-        if (len(numbers) == 0 or f.current_header.number in numbers):
-            f.dump_current_header()
+    sys.exit(0)
 
-        if (opt_header_only):
-            f.skip_one_data()
+while True:
+    f.read_one_header()
+    if (f.is_eof):
+        break
+    if (opt_all or f.current_header.number in opt_numbers):
+        f.dump_current_header()
+
+    if (opt_header_only):
+        f.skip_one_data()
+    else:
+        if (opt_all or f.current_header.number in opt_numbers):
+            f.read_one_data()
+            f.dump_current_data()
         else:
-            if (len(numbers) == 0 or f.current_header.number in numbers):
-                f.read_one_data()
-                f.dump_current_data()
-            # else:
-            #     f.skip_one_data()
+            f.skip_one_data()
