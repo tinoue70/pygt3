@@ -314,9 +314,6 @@ class GT3File:
             self.skip_one_data()
             self.num_of_data += 1
             tbl.append([self.current_header.item, self.current_header.time, self.current_header.dfmt])
-        if (self.opt_debug):
-            print('dbg:scan:')
-            print(tbl)
         self.table = pd.DataFrame(tbl)
         self.table.columns = ['item', 'time', 'dfmt']
         self.num_of_times = self.table.pivot_table(index='time', aggfunc=[len]).shape[0]
