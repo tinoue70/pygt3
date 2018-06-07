@@ -10,30 +10,35 @@ import matplotlib.pyplot as plt
 # from cartopy import config
 import cartopy.crs as ccrs
 
+
 class A:
     """ base class for argparse,"""
     pass
 
 
-def find_axfile(name,search_path=[u".", u"$GT3AXISDIR", u"$GTOOLDIR/gt3"]):
+def find_axfile(name, search_path=[u".", u"$GT3AXISDIR", u"$GTOOLDIR/gt3"]):
+    """
+    Find gtool3 axis file with given axis name `name` from path listed as `search_path`.
 
-    axis_path=map(os.path.expandvars, search_path)
-    axis_path=[ a for a in axis_path if a.find('$')<0 ]
-    axis_path=[ a for a in axis_path if os.path.exists(a)]
+    Return path of the found axis file or `None` unless found.
+    """
+    axis_path = map(os.path.expandvars, search_path)
+    axis_path = [a for a in axis_path if a.find('$') < 0]
+    axis_path = [a for a in axis_path if os.path.exists(a)]
 
     if (opt_debug):
         print('*** axis_path:')
         print(axis_path)
 
+    axfile = None
     for axdir in axis_path:
         # print(axdir)
-        axfile=os.path.join(axdir,'GTAXLOC.'+name)
+        axfile = os.path.join(axdir, 'GTAXLOC.'+name)
         if (os.path.exists(axfile)):
             break
 
     # print("dbg:find_axfile:",axfile)
     return axfile
-
 
 
 parser = argparse.ArgumentParser(description='Plot one data in gt3file')
@@ -75,12 +80,12 @@ if (opt_debug):
 if (opt_debug):
     print("dbg:opt_header_only:", opt_header_only)
     print("dbg:opt_show_table:", opt_show_table)
-    print("dbg:opt_number:",opt_number)
+    print("dbg:opt_number:", opt_number)
     print("dbg:file:", file)
 
 f = GT3File(file)
 f.opt_debug = opt_debug
-f.opt_verbose= opt_verbose
+f.opt_verbose = opt_verbose
 
 f.scan()
 
@@ -93,13 +98,13 @@ if (opt_show_table):
 # Extract target data
 ################################################################################
 
-target_header=None
-target_data=None
+target_header = None
+target_data = None
 
 while True:
     f.read_one_header()
     if (opt_debug):
-        print('dbg: current data:',f.current_header.number)
+        print('dbg: current data:', f.current_header.number)
     if (f.is_eof):
         break
     if (opt_number == f.current_header.number):
@@ -112,7 +117,9 @@ while True:
 
 target_header = f.current_header
 target_data = f.current_data
-target_header.dump()
+if (opt_verbose):
+    target_header.dump()
+
 if (opt_debug):
     print(target_data.flags)
     print(target_data.dtype)
@@ -126,59 +133,66 @@ if (opt_debug):
 ################################################################################
 # Prepare axis data
 ################################################################################
-xaxis={}
-yaxis={}
+xax = {}
+yax = {}
 
-xaxis["name"] = target_header.aitm1
-xaxis["indices"] = (target_header.astr1, target_header.aend1)
-yaxis["name"] = target_header.aitm2
-yaxis["indices"] = (target_header.astr2, target_header.aend2)
+xax["name"] = target_header.aitm1
+xax["indices"] = (target_header.astr1, target_header.aend1)
+yax["name"] = target_header.aitm2
+yax["indices"] = (target_header.astr2, target_header.aend2)
 
 
 if (opt_debug):
-    print("dbg xaxis:",xaxis)
-xf = GT3File(find_axfile(xaxis["name"]))
+    print("dbg xax:", xax)
+xf = GT3File(find_axfile(xax["name"]))
 xf.scan()
 xf.read_one_header()
 xf.read_one_data()
 if (opt_debug):
     xf.dump_current_header()
     xf.dump_current_data()
-xaxdata=xf.current_data.flatten()
+xaxdata = xf.current_data.flatten()
 if (xf.current_header.cyclic):
     xaxdata = xaxdata[:-1]
 # if (xf.current_header.cyclic):
 #     target_data,xaxdata = basemap.addcyclic(target_data,xaxdata[:-1])
 xf.close()
 
-
-
 if (opt_debug):
-    print("dbg yaxis:",yaxis)
-yf = GT3File(find_axfile(yaxis["name"]))
+    print("dbg yax:", yax)
+yf = GT3File(find_axfile(yax["name"]))
 yf.scan()
 yf.read_one_header()
 yf.read_one_data()
 if (opt_verbose):
     yf.dump_current_header()
     yf.dump_current_data()
-yaxdata=yf.current_data.flatten()
-# if (yf.current_header.cyclic):
-#     yaxdata = xaxdata[:-1]
-# yf.close()
+yaxdata = yf.current_data.flatten()
+if (yf.current_header.cyclic):
+    yaxdata = xaxdata[:-1]
+yf.close()
 
 
 ################################################################################
 # Start plotting
 ################################################################################
 if (opt_debug):
-    print("dbg: target_data.shape:",target_data.shape)
-    print("dbg: xaxdata.shape:",xaxdata.shape)
-    print("dbg: yaxdata.shape:",yaxdata.shape)
+    print("dbg: target_data.shape:", target_data.shape)
+    print("dbg: xaxdata.shape:", xaxdata.shape)
+    print("dbg: yaxdata.shape:", yaxdata.shape)
 
-ax = plt.axes(projection=ccrs.PlateCarree())
-plt.contourf(xaxdata, yaxdata, target_data[0,:,:], 60,
-             transform=ccrs.PlateCarree())
+# ax = plt.axes(projection=ccrs.Mollweide())
+# ax = plt.axes(projection=ccrs.NorthPolarStereo())
+ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180.0))
+img = ax.contourf(xaxdata, yaxdata, target_data[0, :, :], 60,
+                  transform=ccrs.PlateCarree())
+
+ax.axis("image")
+title = "%s[%s]" % (target_header.titl, target_header.unit)
+ax.set(title=title)
 ax.coastlines()
-plt.colorbar()
+
+plt.colorbar(img, ax=ax, orientation="horizontal")
 plt.show()
+
+sys.exit(0)
