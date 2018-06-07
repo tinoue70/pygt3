@@ -59,6 +59,10 @@ parser.add_argument(
     'file', help='file name.')
 
 parser.add_argument(
+    '-l', '--level', help='vertical level to plot.',
+    type=int, default=0)
+
+parser.add_argument(
     '-n', '--number', help='data number to plot.',
     type=int, default=0)
 
@@ -69,6 +73,8 @@ parser.parse_args(namespace=a)
 file = a.file
 
 opt_data_number = a.number
+opt_vert_level = a.level
+
 opt_header_only = a.header
 opt_show_table = a.table
 opt_debug = a.debug
@@ -81,6 +87,7 @@ if (opt_debug):
     print("dbg:opt_header_only:", opt_header_only)
     print("dbg:opt_show_table:", opt_show_table)
     print("dbg:opt_data_number:", opt_data_number)
+    print("dbg:opt_vert_level:", opt_vert_level)
     print("dbg:file:", file)
 
 f = GT3File(file)
@@ -95,7 +102,8 @@ if (opt_show_table):
 
 
 if (opt_data_number not in range(f.num_of_data)):
-    print('Error: data number out of range: %d is not in range(%d)' % (opt_data_number, f.num_of_data))
+    print('Error: data number out of range: %d is not in range(%d)' 
+          % (opt_data_number, f.num_of_data))
     sys.exit(1)
 
 ################################################################################
@@ -133,6 +141,11 @@ if (opt_debug):
     print(target_data.shape)
     print(target_data.size)
 
+
+if (opt_vert_level not in range(target_data.shape[0])):
+    print('Error: vertical level out of range: %d is not in range(%d)' 
+          % (opt_vert_level, target_data.shape[0]))
+    sys.exit(1)
 
 ################################################################################
 # Prepare axis data
@@ -188,7 +201,7 @@ if (opt_debug):
 # ax = plt.axes(projection=ccrs.Mollweide())
 # ax = plt.axes(projection=ccrs.NorthPolarStereo())
 ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180.0))
-img = ax.contourf(xaxdata, yaxdata, target_data[0, :, :], 60,
+img = ax.contourf(xaxdata, yaxdata, target_data[opt_vert_level, :, :], 60,
                   transform=ccrs.PlateCarree())
 
 ax.axis("image")
