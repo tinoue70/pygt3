@@ -192,7 +192,7 @@ title = "%s[%s]" % (target_header.titl, target_header.unit)
 ax.set(title=title)
 ax.coastlines()
 
-plt.colorbar(img, ax=ax, orientation="horizontal")
+plt.colorbar(img, ax=ax, orientation="horizontal", extend="both")
 plt.show()
 
 sys.exit(0)
