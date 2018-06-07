@@ -335,13 +335,15 @@ class GT3File:
         self.table.columns = ['item', 'time', 'dfmt']
         self.num_of_times = self.table.pivot_table(index='time', aggfunc=[len]).shape[0]
         self.num_of_items = self.table.pivot_table(index='item', aggfunc=[len]).shape[0]
-        liner = "="*5 + " Scan result: "
-        liner += "="*(80-len(liner))
-        print(liner)
-        print("* num_of_data :",self.num_of_data)
-        print("* num_of_times:",self.num_of_times)
-        print("* num_of_items:",self.num_of_items)
-        print("="*len(liner))
+
+        if (self.opt_verbose):
+            liner = "="*5 + " Scan result: "
+            liner += "="*(80-len(liner))
+            print(liner)
+            print("* num_of_data :",self.num_of_data)
+            print("* num_of_times:",self.num_of_times)
+            print("* num_of_items:",self.num_of_items)
+            print("="*len(liner))
 
         return None
 
