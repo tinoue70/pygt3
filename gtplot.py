@@ -23,7 +23,7 @@ def find_axfile(name, search_path=[u".", u"$GT3AXISDIR", u"$GTOOLDIR/gt3"]):
     Return path of the found axis file or `None` unless found.
     """
     axis_path = map(os.path.expandvars, search_path)
-    axis_path = [a for a in axis_path if a.find('$') < 0]
+    # axis_path = [a for a in axis_path if a.find('$') < 0]
     axis_path = [a for a in axis_path if os.path.exists(a)]
 
     if (opt_debug):
