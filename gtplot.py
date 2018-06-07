@@ -60,7 +60,7 @@ parser.add_argument(
 
 parser.add_argument(
     '-n', '--number', help='data number to plot.',
-    type=int, nargs=1, default=[0])
+    type=int, default=0)
 
 
 a = A()
@@ -68,7 +68,7 @@ parser.parse_args(namespace=a)
 
 file = a.file
 
-opt_number = a.number[0]
+opt_data_number = a.number
 opt_header_only = a.header
 opt_show_table = a.table
 opt_debug = a.debug
@@ -80,7 +80,7 @@ if (opt_debug):
 if (opt_debug):
     print("dbg:opt_header_only:", opt_header_only)
     print("dbg:opt_show_table:", opt_show_table)
-    print("dbg:opt_number:", opt_number)
+    print("dbg:opt_data_number:", opt_data_number)
     print("dbg:file:", file)
 
 f = GT3File(file)
@@ -94,6 +94,10 @@ if (opt_show_table):
     sys.exit(0)
 
 
+if (opt_data_number not in range(f.num_of_data)):
+    print('Error: data number out of range: %d is not in range(%d)' % (opt_data_number, f.num_of_data))
+    sys.exit(1)
+
 ################################################################################
 # Extract target data
 ################################################################################
@@ -103,13 +107,13 @@ target_data = None
 
 while True:
     f.read_one_header()
-    if (opt_debug):
-        print('dbg: current data:', f.current_header.number)
     if (f.is_eof):
         break
-    if (opt_number == f.current_header.number):
+    if (opt_debug):
+        print('dbg: current data:', f.current_header.number)
+    if (opt_data_number == f.current_header.number):
         if (opt_debug):
-            print("dbg: data #%d found." % opt_number)
+            print("dbg: data #%d found." % opt_data_number)
         f.read_one_data()
         break
     else:
