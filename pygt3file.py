@@ -281,7 +281,13 @@ class GT3File:
         self.current_data = None
         self.is_after_header = False
         self.is_eof = False
+        self.num_of_data = -1
+        self.num_of_times = -1
+        self.num_of_items = -1
+        self.table = None
         self.opt_debug = False
+        self.opt_verbose = False
+
         # self.packer = BitPacker()
         return None
 
@@ -329,7 +335,8 @@ class GT3File:
         self.table.columns = ['item', 'time', 'dfmt']
         self.num_of_times = self.table.pivot_table(index='time', aggfunc=[len]).shape[0]
         self.num_of_items = self.table.pivot_table(index='item', aggfunc=[len]).shape[0]
-        liner = "===== Scan result: ====="
+        liner = "="*5 + " Scan result: "
+        liner += "="*(80-len(liner))
         print(liner)
         print("* num_of_data :",self.num_of_data)
         print("* num_of_times:",self.num_of_times)
@@ -338,8 +345,24 @@ class GT3File:
 
         return None
 
+    def show_table(self):
+        """
+        Show data table, created by scan().
+        """
+
+        if (self.table is not None):
+            liner = "="*5 + " Data table: "
+            liner += "="*(80-len(liner))
+            print(liner)
+            print(self.table.to_string())
+            print("="*len(liner))
+        else:
+            print("Data table is not created, use .scan() first.")
+
     def read_one_header(self):
-        """ Read one header and it as a `current_header`. """
+        """
+        Read one header and it as a `current_header`.
+        """
 
         dt = np.dtype([("head", ">i4"), ("header", "a16", 64), ("tail", ">i4")])
 
