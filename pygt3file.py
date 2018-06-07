@@ -395,11 +395,11 @@ class GT3File:
             raise NotImplementedError
         elif (self.current_header.dfmt[:3] == 'URY'):
             packed_bit_width = int(self.current_header.dfmt[3:])
-            # print("*** packed_bit_width=%d" % packed_bit_width)
+            # print("dbg:packed_bit_width=%d" % packed_bit_width)
 
             ijnum = self.current_header.isize * self.current_header.jsize
             knum = self.current_header.ksize
-            # print("*** ijnum, knum=%d, %d" % (ijnum,knum))
+            # print("dbg:ijnum, knum=%d, %d" % (ijnum,knum))
 
             # coeffs[*,0] is the offset values, coeffs[*,1] is the scale values.
             dt = np.dtype([("head", ">i4"), ("data", ">f8", knum*2), ("tail", ">i4")])
@@ -407,23 +407,23 @@ class GT3File:
             if (chunk["head"] != chunk["tail"]):
                 raise IOError
             coeffs = chunk["data"][0].reshape(knum, 2)
-            # print('*** type(coeffs):',type(coeffs),coeffs.shape, coeffs.dtype)
-            # print("*** coeffs:\n",coeffs)
+            # print('dbg:type(coeffs):',type(coeffs),coeffs.shape, coeffs.dtype)
+            # print("dbg:coeffs:\n",coeffs)
 
             ijnum_packed = BitPacker.calc_packed_length(ijnum, packed_bit_width)
-            # print("*** ijnum_packed=%d" % ijnum_packed)
+            # print("dbg:ijnum_packed=%d" % ijnum_packed)
             dt = np.dtype([("head", ">i4"), ("data", ">i4", ijnum_packed*knum), ("tail", ">i4")])
             chunk = np.fromfile(self.f, dtype=dt, count=1)
             if (chunk["head"] != chunk["tail"]):
                 raise IOError
             packed = chunk["data"][0].reshape(knum, ijnum_packed)
-            # print("*** packed:",packed.dtype,packed.shape)
+            # print("dbg:packed:",packed.dtype,packed.shape)
 
             for k in range(knum):
                 unpacked = BitPacker.unpack(packed[k, :], packed_bit_width, ijnum)
-                # print("*** unpacked:",unpacked)
+                # print("dbg:unpacked:",unpacked)
                 self.current_data = np.ndarray(shape=(knum, ijnum), dtype="float64")
-                # print('***',self.current_data.shape)
+                # print('dbg',self.current_data.shape)
                 self.current_data[k, :] = coeffs[k, 0] + unpacked[:] * coeffs[k, 1]
             self.current_data = self.current_data.reshape(self.current_header.shape)
         elif (self.current_header.dfmt[:3] == 'MRY'):
@@ -469,11 +469,11 @@ class GT3File:
         liner += "="*(80-len(liner))
         if (self.opt_debug):
             print("dbg:current_data:")
-            print(" **** flags:")
+            print("  flags:")
             print(self.current_data.flags)
-            print(" **** dtype:",self.current_data.dtype)
-            print(" **** size,itemsize:",self.current_data.size, self.current_data.itemsize)
-            print(" **** ndim, shape, strides:",self.current_data.ndim, self.current_data.shape, self.current_data.strides)
+            print("  dtype:",self.current_data.dtype)
+            print("  size,itemsize:",self.current_data.size, self.current_data.itemsize)
+            print("  ndim, shape, strides:",self.current_data.ndim, self.current_data.shape, self.current_data.strides)
         print(liner)
         if (len(kwargs) > 0):
             np.set_printoptions(**kwargs)
