@@ -485,6 +485,36 @@ class GT3File:
         return None
 
 
+    def read_nth_data(self, num):
+        """
+        Read and return `num`-th header and data as a tuple.
+
+        If not found, return (None, None).
+        """
+
+        self.rewind()
+        while True:
+            self.read_one_header()
+            if (self.opt_debug):
+                print("dbg: reading data #%d." % self.current_header.number)
+            if (self.is_eof):
+                h = None
+                d = None
+                return(None,None)
+                break
+            if (num == self.current_header.number):
+                self.read_one_data()
+                if (self.opt_debug):
+                    print("dbg: data #%d found." % num)
+                h = self.current_header
+                d = self.current_data
+                break
+            else:
+                self.skip_one_data()
+
+        return(h, d)
+
+
 ################################################################################
 # Tests for GT3File
 ################################################################################
