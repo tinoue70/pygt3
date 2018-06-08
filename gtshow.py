@@ -34,7 +34,6 @@ parser.parse_args(namespace=a)
 
 file = a.file
 
-print(type(a.numbers))
 if (a.numbers is None):
     opt_numbers = ()
     opt_all = True
@@ -57,7 +56,7 @@ f.opt_debug = opt_debug
 f.scan()
 
 if (opt_show_table):
-    print(f.table.to_string())
+    f.show_table()
     sys.exit(0)
 
 while True:
