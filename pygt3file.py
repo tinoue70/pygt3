@@ -165,7 +165,7 @@ class GT3Header:
         self.number = -1
         pass
 
-    def set(self, hd):
+    def set(self, hd, fname=None):
         self.dset = hd[1].strip().decode('UTF-8')
         self.cyclic = (self.dset[0]=='C')
         self.item = hd[2].strip().decode('UTF-8')
@@ -224,11 +224,13 @@ class GT3Header:
             self.ijnum_packed = BitPacker.calc_packed_length(ijnum, self.packed_bit_width)
             self.data_bits = knum*2*8+8 + self.ijnum_packed*knum*8+8
 
+        if (fname is not None):
+            self.fname = fname
         pass
 
     def dump(self):
         if (self is not None):
-            liner = '====== header #%d ' % self.number
+            liner = '====== %s: header #%d ' % (self.fname, self.number)
             liner += "="*(80-len(liner))
             print(liner)
             print("dset : %s" % str(self.dset))
@@ -337,7 +339,7 @@ class GT3File:
         self.num_of_items = self.table.pivot_table(index='item', aggfunc=[len]).shape[0]
 
         if (self.opt_verbose):
-            liner = "="*5 + " Scan result: "
+            liner = "="*5 + " %s: Scan result: " % self.name
             liner += "="*(80-len(liner))
             print(liner)
             print("* num_of_data :",self.num_of_data)
@@ -370,7 +372,7 @@ class GT3File:
 
         chunk = np.fromfile(self.f, dtype=dt, count=1)
         if (len(chunk)):
-            self.current_header.set(chunk["header"][0])
+            self.current_header.set(chunk["header"][0], self.name)
             self.current_header.number += 1
             self.is_eof = False
             self.is_after_header = True
@@ -467,7 +469,7 @@ class GT3File:
     def dump_current_data(self, **kwargs):
         np.set_printoptions(threshold=np.inf, linewidth=110, suppress=True)
 
-        liner = '====== data #%d ' % self.current_header.number
+        liner = '====== %s: data #%d ' % (self.name, self.current_header.number)
         liner += "="*(80-len(liner))
         if (self.opt_debug):
             print("dbg:current_data:")
