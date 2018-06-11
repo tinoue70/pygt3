@@ -168,7 +168,7 @@ class GT3Header:
 
     def set(self, hd, fname=None):
         self.dset = hd[1].strip().decode('UTF-8')
-        self.cyclic = (self.dset[0]=='C')
+        self.cyclic = (self.dset[0] == 'C')
         self.item = hd[2].strip().decode('UTF-8')
         self.titl = (hd[13]+hd[14]).strip().decode('UTF-8')
         self.unit = hd[15].strip().decode('UTF-8')
@@ -193,11 +193,11 @@ class GT3Header:
         self.divl = float(hd[42])
         self.styp = int(hd[43])
         self.coptn = hd[44].strip().decode('UTF-8')
-        if (hd[45].strip().decode('UTF-8') != '' ):
+        if (hd[45].strip().decode('UTF-8') != ''):
             self.ioptn = int(hd[45])
         else:
             self.ioptn = None
-        if (hd[46].strip().decode('UTF-8') != '' ):
+        if (hd[46].strip().decode('UTF-8') != ''):
             self.roptn = float(hd[45])
         else:
             self.roptn = None
@@ -237,12 +237,12 @@ class GT3Header:
             print("dset : %s" % str(self.dset))
             print("item : %s[%s]: %s" % (self.item, self.unit, self.titl))
             print("date : %s(%d) with %d[%s]" % (self.date, self.time, self.tdur, self.utim))
-            if (self.aitm3!=''):
+            if (self.aitm3 != ''):
                 print("axis : %s[%d:%d] x %s[%d:%d] x %s[%d:%d]"
                       % (self.aitm1, self.astr1, self.aend1,
                          self.aitm2, self.astr2, self.aend2,
                          self.aitm3, self.astr3, self.aend3))
-            elif (self.aitm2!=''):
+            elif (self.aitm2 != ''):
                 print("axis : %s[%d:%d] x %s[%d:%d]"
                       % (self.aitm1, self.astr1, self.aend1,
                          self.aitm2, self.astr2, self.aend2))
@@ -319,7 +319,7 @@ class GT3File:
         return None
 
     def scan(self):
-        """ 
+        """
         Scan whole file and create data table, which is pandas.DataFrame instance.
         Note that file position is on the top after this method.
         """
@@ -343,9 +343,9 @@ class GT3File:
             liner = "="*5 + " %s: Scan result: " % self.name
             liner += "="*(80-len(liner))
             print(liner)
-            print("* num_of_data :",self.num_of_data)
-            print("* num_of_times:",self.num_of_times)
-            print("* num_of_items:",self.num_of_items)
+            print("* num_of_data :", self.num_of_data)
+            print("* num_of_times:", self.num_of_times)
+            print("* num_of_items:", self.num_of_items)
             print("="*len(liner))
 
         return None
@@ -476,9 +476,9 @@ class GT3File:
             print("dbg:current_data:")
             print("  flags:")
             print(self.current_data.flags)
-            print("  dtype:",self.current_data.dtype)
-            print("  size,itemsize:",self.current_data.size, self.current_data.itemsize)
-            print("  ndim, shape, strides:",self.current_data.ndim, self.current_data.shape, self.current_data.strides)
+            print("  dtype:", self.current_data.dtype)
+            print("  size,itemsize:", self.current_data.size, self.current_data.itemsize)
+            print("  ndim, shape, strides:", self.current_data.ndim, self.current_data.shape, self.current_data.strides)
         print(liner)
         if (len(kwargs) > 0):
             np.set_printoptions(**kwargs)
@@ -486,7 +486,6 @@ class GT3File:
         print('='*len(liner))
 
         return None
-
 
     def read_nth_data(self, num):
         """
@@ -503,7 +502,7 @@ class GT3File:
             if (self.is_eof):
                 h = None
                 d = None
-                return(None,None)
+                return(None, None)
                 break
             if (num == self.current_header.number):
                 self.read_one_data()
@@ -593,21 +592,21 @@ class GT3Axis():
         pass
 
     def dump(self):
-        liner = '='*6+ ' Axis: %s ' % self.name
+        liner = '='*6 + ' Axis: %s ' % self.name
         liner += '='*(80-len(liner))
         print(liner)
-        print("title:",self.title)
-        print("size:",self.size)
+        print("title:", self.title)
+        print("size:", self.size)
         print("data:")
         print(self.data)
         print('='*len(liner))
         pass
 
+################################################################################
+# Here we go.
+################################################################################
 
 
 if __name__ == '__main__':
 
     unittest.main()
-
-
-    
