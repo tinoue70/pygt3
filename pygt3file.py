@@ -4,6 +4,7 @@ from __future__ import print_function
 import numpy as np
 import pandas as pd
 import math
+import os
 
 import unittest
 
@@ -536,6 +537,77 @@ class TestGT3File(unittest.TestCase):
             f1 = GT3File(filename, mode)
 
 
+################################################################################
+# Axis for GTOOL3
+################################################################################
+class GT3Axis():
+    """
+    gtool3 axis.
+    """
+
+    def __init__(self, name, search_paths=[u".", u"$GT3AXISDIR", u"$GTOOLDIR/gt3"]):
+        self.name = name
+        self.search_paths = search_paths
+        self.find_axfile()
+        if (self.file is not None):
+            f = GT3File(self.file)
+        else:
+            self.file = None
+            return
+        if (f is None):
+            self = None
+        f.scan()
+
+        self.name = name   # "GLONxx" etc.
+        self.header, self.data = f.read_nth_data(0)
+        self.title = f.current_header.titl  # "longitude" etc.
+        self.data = f.current_data.flatten()
+        if (f.current_header.cyclic):
+            self.data = self.data[:-1]
+        f.close()
+        self.size = len(self.data)
+        pass
+
+    def find_axfile(self):
+        """
+        Find gtool3 axis file with given axis name `name` from path listed as `self.search_paths`.
+
+        Return path of the found axis file or `None` unless found.
+        """
+        axis_path = map(os.path.expandvars, self.search_paths)
+        axis_path = [a for a in axis_path if os.path.exists(a)]
+
+        found = False
+        for axdir in axis_path:
+            axfile = os.path.join(axdir, 'GTAXLOC.'+self.name)
+            if (os.path.exists(axfile)):
+                found = True
+                break
+
+        if (found):
+            self.file = axfile
+        else:
+            print('Axis "%s" Not found in path(s): %s' % (self.name, ":".join(self.search_paths)))
+            self.file = None
+
+        pass
+
+    def dump(self):
+        liner = '='*6+ ' Axis: %s ' % self.name
+        liner += '='*(80-len(liner))
+        print(liner)
+        print("title:",self.title)
+        print("size:",self.size)
+        print("data:")
+        print(self.data)
+        print('='*len(liner))
+        pass
+
+
+
 if __name__ == '__main__':
 
     unittest.main()
+
+
+    
