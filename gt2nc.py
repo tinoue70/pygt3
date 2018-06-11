@@ -67,28 +67,28 @@ if (opt_debug):
 ################################################################################
 # Extract target data
 ################################################################################
-f = GT3File(ifile)
-f.opt_debug = opt_debug
-f.opt_verbose = opt_verbose
+gf = GT3File(ifile)
+gf.opt_debug = opt_debug
+gf.opt_verbose = opt_verbose
 
-f.scan()
+gf.scan()
 if (opt_show_table):
-    f.show_table()
+    gf.show_table()
     sys.exit(0)
 
-if (opt_data_number not in range(f.num_of_data)):
+if (opt_data_number not in range(gf.num_of_data)):
     print('Error: data number out of range: %d is not in range(%d)'
-          % (opt_data_number, f.num_of_data))
+          % (opt_data_number, gf.num_of_data))
     sys.exit(1)
 
 gtvar = A()
 gtvar.header = None
 gtvar.data = None
 
-gtvar.header, gtvar.data = f.read_nth_data(opt_data_number)
+gtvar.header, gtvar.data = gf.read_nth_data(opt_data_number)
 if (opt_verbose):
     gtvar.header.dump()
-f.close()
+gf.close()
 ################################################################################
 # Prepare axis data
 ################################################################################
