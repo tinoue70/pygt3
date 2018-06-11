@@ -7,6 +7,7 @@ import argparse
 import sys
 import os
 
+# opt_debug = True
 
 class A:
     """ general purpose bare class."""
@@ -20,21 +21,29 @@ def find_axfile(name, search_path=[u".", u"$GT3AXISDIR", u"$GTOOLDIR/gt3"]):
     Return path of the found axis file or `None` unless found.
     """
     axis_path = map(os.path.expandvars, search_path)
-    # axis_path = [a for a in axis_path if a.find('$') < 0]
     axis_path = [a for a in axis_path if os.path.exists(a)]
 
     if (opt_debug):
-        print('*** axis_path:')
-        print(axis_path)
+        print('dbg:axis_path:',axis_path)
 
-    axfile = None
+    found = False
     for axdir in axis_path:
         # print(axdir)
         axfile = os.path.join(axdir, 'GTAXLOC.'+name)
+        # print("dbg:axfile:",axfile)
+        # print("dbg:os.path.exists(axfile):",os.path.exists(axfile))
         if (os.path.exists(axfile)):
+            found = True
             break
 
-    # print("dbg:find_axfile:",axfile)
+    if (found):
+        if (opt_verbose):
+            print("dbg:found axfile:",axfile)
+        return axfile
+    else:
+        print('Axis "%s" Not found in path(s): %s' % (name, ":".join(search_path)))
+        return None
+
     return axfile
 
 
@@ -45,8 +54,12 @@ def read_axis(name):
     ax.data = None
 
     if (opt_verbose):
-        print("dbg ax.name:", ax.name)
-    f = GT3File(find_axfile(ax.name))
+        print("dbg:ax.name:", ax.name)
+    fname = find_axfile(ax.name)
+    if (fname is not None):
+        f = GT3File(fname)
+    else:
+        sys.exit(1)
     if (f is None):
         return None
     f.scan()
@@ -151,7 +164,7 @@ zax = read_axis(gtvar.header.aitm3)
 print(zax.title, zax.size)
 
 if (zax is None):
-    print("zaxis is None:", xaxis.title)
+    print("zaxis is None:", zax.title)
     sys.exit(1)
 
 ################################################################################
