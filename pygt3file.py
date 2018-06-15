@@ -543,10 +543,15 @@ class GT3Axis():
     """
     gtool3 axis.
     """
+    
+    default_search_paths = [u".", u"$GT3AXISDIR", u"$GTOOLDIR/gt3"]
 
-    def __init__(self, name, search_paths=[u".", u"$GT3AXISDIR", u"$GTOOLDIR/gt3"]):
+    def __init__(self, name, search_paths=None):
         self.name = name
-        self.search_paths = search_paths
+        if ( search_paths is None):
+            self.search_paths = self.default_search_paths
+        else:
+            self.search_paths = search_paths
         self.find_axfile()
         if (self.file is not None):
             f = GT3File(self.file)
@@ -595,6 +600,7 @@ class GT3Axis():
         liner = '='*6 + ' Axis: %s ' % self.name
         liner += '='*(80-len(liner))
         print(liner)
+        print("path:", self.file)
         print("title:", self.title)
         print("size:", self.size)
         print("data:")

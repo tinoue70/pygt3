@@ -27,9 +27,9 @@ parser.add_argument(
 parser.add_argument(
     '-v', '--verbose', help='verbose output',
     action='store_true')
-parser.add_argument(
-    '-H', '--header', help='Show header only.',
-    action='store_true')
+# parser.add_argument(
+#     '-H', '--header', help='Show header only.',
+#     action='store_true')
 parser.add_argument(
     '-T', '--table', help='Show data table only.',
     action='store_true')
@@ -44,6 +44,9 @@ parser.add_argument(
     '-n', '--number', help='data number to plot.',
     type=int, default=0)
 
+parser.add_argument(
+    '--axdir', help='axis file directory.',
+    default=None)
 
 a = A()
 parser.parse_args(namespace=a)
@@ -52,8 +55,8 @@ file = a.file
 
 opt_data_number = a.number
 opt_vert_level = a.level
+opt_axdir = a.axdir.split(':')
 
-opt_header_only = a.header
 opt_show_table = a.table
 opt_debug = a.debug
 opt_verbose = a.verbose
@@ -62,10 +65,10 @@ if (opt_debug):
     opt_verbose = True
 
 if (opt_debug):
-    print("dbg:opt_header_only:", opt_header_only)
     print("dbg:opt_show_table:", opt_show_table)
     print("dbg:opt_data_number:", opt_data_number)
     print("dbg:opt_vert_level:", opt_vert_level)
+    print("dbg:opt_axdir:", opt_axdir)
     print("dbg:file:", file)
 
 f = GT3File(file)
@@ -95,8 +98,6 @@ while True:
     f.read_one_header()
     if (f.is_eof):
         break
-    # if (opt_debug):
-    #     print('dbg: current data:', f.current_header.number)
     if (opt_data_number == f.current_header.number):
         if (opt_debug):
             print("dbg: data #%d found." % opt_data_number)
@@ -111,13 +112,15 @@ if (opt_verbose):
     target_header.dump()
 
 if (opt_debug):
+    print("dbg: target_data:")
+    print("* frags:")
     print(target_data.flags)
-    print(target_data.dtype)
-    print(target_data.size)
-    print(target_data.itemsize)
-    print(target_data.ndim)
-    print(target_data.shape)
-    print(target_data.size)
+    print("* dtype:", target_data.dtype)
+    print("* size:", target_data.size)
+    print("* itemsize:", target_data.itemsize)
+    print("* ndim:", target_data.ndim)
+    print("* shape:",target_data.shape)
+
 
 
 if (opt_vert_level not in range(target_data.shape[0])):
@@ -129,13 +132,13 @@ if (opt_vert_level not in range(target_data.shape[0])):
 # Prepare axis data
 ################################################################################
 
-xax = GT3Axis(target_header.aitm1)
+xax = GT3Axis(target_header.aitm1, opt_axdir)
 if (xax.file is None):
     sys.exit(1)
 if (opt_debug):
     xax.dump()
 
-yax = GT3Axis(target_header.aitm2)
+yax = GT3Axis(target_header.aitm2, opt_axdir)
 if (yax.file is None):
     sys.exit(1)
 if (opt_debug):
