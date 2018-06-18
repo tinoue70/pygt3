@@ -5,9 +5,10 @@ import numpy as np
 import pandas as pd
 import math
 import os
-
+import datetime
 import unittest
-
+import tempfile
+from collections import deque
 
 class Error(Exception):
     """Base class for exceptions in this module."""
@@ -136,17 +137,46 @@ class TestBitPacker(unittest.TestCase):
 
 ################################################################################
 class GT3Header:
-    """gtool3 format header."""
+    """GTOOL3 format header.
+
+    GTOOL3 format header is consist of
+    `character(len=16,dimension=64)` array in Fortran, which I call
+    `hdarray` here. See 'XXX' for a complete list of it.
+
+    This class is an abstraction of this information. All of elements
+    of `hdarray` are assigned as attributes of this class.
+    Some of them are casted to integer and/or float type.
+
+    Note that three attributes, `ettl`, `edit` and `memo`, are
+    considered as a `queue` in original GTOOL3 format, and these are
+    implemented as `deque` class, with limited `maxlen`, of
+    `collections` package in this class.
+    """
 
     def __init__(self,
                  dset='', item='', title='', unit='', date='', utim='',
+                 time=0, tdur=0,
                  aitm1='', astr1=0, aend1=0,
                  aitm2='', astr2=0, aend2=0,
                  aitm3='', astr3=0, aend3=0,
                  dfmt='UR4',
-                 time=0, tdur=0):
+                 miss=-999., dmin=-999., dmax=-999., divs=-999., divl=-999.,
+                 edit=None,
+                 fnum=0, dnum=0,
+                 ettl=None,
+                 memo=None,
+                 fname=None):
+
         self.dset = dset
         self.item = item
+
+        self.edit = deque("", 8)
+        self.ettl = deque("", 8)
+        self.memo = deque("", 10)
+        self.add_attribs(edit=edit, ettl=ettl, memo=memo)
+
+        self.fnum = fnum
+        self.dnum = dnum
         self.titl = title
         self.unit = unit
         self.time = int(time)
@@ -163,50 +193,100 @@ class GT3Header:
         self.astr3 = int(astr3)
         self.aend3 = int(aend3)
         self.dfmt = dfmt
+        self.miss = miss
+        self.dmin = dmin
+        self.dmax = dmax
+        self.divs = divs
+        self.divl = divl
+        self.styp = 1
+        self.coptn = ''
+        self.ioptn = 0
+        self.roptn = 0.
+        self.time2 = time
+        self.utim2 = utim
+        self.cdate = "{0:%Y%m%d %H%M%S}".format(datetime.datetime.now())
+        self.csign = 'pygt3 library'
+        self.mdate = self.cdate
+        self.msign = 'pygt3 library'
+        self.size = 0
+
+        self.fname = fname
         self.number = -1
+        self.set_hidden_attribs()
         pass
 
-    def set(self, hd, fname=None):
-        self.dset = hd[1].strip().decode('UTF-8')
-        self.cyclic = (self.dset[0] == 'C')
-        self.item = hd[2].strip().decode('UTF-8')
-        self.titl = (hd[13]+hd[14]).strip().decode('UTF-8')
-        self.unit = hd[15].strip().decode('UTF-8')
-        self.time = int(hd[24])
-        self.date = hd[26].decode('UTF-8')
-        self.tdur = int(hd[27])
-        self.utim = hd[25].strip().decode('UTF-8')
-        self.aitm1 = hd[28].strip().decode('UTF-8')
-        self.astr1 = int(hd[29])
-        self.aend1 = int(hd[30])
-        self.aitm2 = hd[31].strip().decode('UTF-8')
-        self.astr2 = int(hd[32])
-        self.aend2 = int(hd[33])
-        self.aitm3 = hd[34].strip().decode('UTF-8')
-        self.astr3 = int(hd[35])
-        self.aend3 = int(hd[36])
-        self.dfmt = hd[37].strip().decode('UTF-8')
-        self.miss = float(hd[38])
-        self.dmin = float(hd[39])
-        self.dmax = float(hd[40])
-        self.divs = float(hd[41])
-        self.divl = float(hd[42])
-        self.styp = int(hd[43])
-        self.coptn = hd[44].strip().decode('UTF-8')
-        if (hd[45].strip().decode('UTF-8') != ''):
-            self.ioptn = int(hd[45])
+    def set_from_hdarray(self, hdarray, fname=None):
+        """
+        Set GT3Header from hdarray, which is an 'a16'*64 ndarray.
+        """
+        self.dset = hdarray[1].strip().decode('UTF-8')
+        self.item = hdarray[2].strip().decode('UTF-8')
+        self.fnum = int(hdarray[11])
+        self.dnum = int(hdarray[12])
+        self.titl = (hdarray[13]+hdarray[14]).strip().decode('UTF-8')
+        self.unit = hdarray[15].strip().decode('UTF-8')
+        self.time = int(hdarray[24])
+        self.utim = hdarray[25].strip().decode('UTF-8')
+        self.date = hdarray[26].strip().decode('UTF-8')
+        self.tdur = int(hdarray[27])
+        self.aitm1 = hdarray[28].strip().decode('UTF-8')
+        self.astr1 = int(hdarray[29])
+        self.aend1 = int(hdarray[30])
+        self.aitm2 = hdarray[31].strip().decode('UTF-8')
+        self.astr2 = int(hdarray[32])
+        self.aend2 = int(hdarray[33])
+        self.aitm3 = hdarray[34].strip().decode('UTF-8')
+        self.astr3 = int(hdarray[35])
+        self.aend3 = int(hdarray[36])
+        self.dfmt = hdarray[37].strip().decode('UTF-8')
+        self.miss = float(hdarray[38])
+        self.dmin = float(hdarray[39])
+        self.dmax = float(hdarray[40])
+        self.divs = float(hdarray[41])
+        self.divl = float(hdarray[42])
+        self.styp = int(hdarray[43])
+        self.coptn = hdarray[44].strip().decode('UTF-8')
+        if (hdarray[45].strip().decode('UTF-8') != ''):
+            self.ioptn = int(hdarray[45])
         else:
             self.ioptn = None
-        if (hd[46].strip().decode('UTF-8') != ''):
-            self.roptn = float(hd[45])
+        if (hdarray[46].strip().decode('UTF-8') != ''):
+            self.roptn = float(hdarray[46])
         else:
             self.roptn = None
-        self.cdate = hd[59].strip().decode('UTF-8')
-        self.csign = hd[60].strip().decode('UTF-8')
-        self.mdate = hd[61].strip().decode('UTF-8')
-        self.msign = hd[62].strip().decode('UTF-8')
-        self.size = int(hd[63])
+        self.time2 = int(hdarray[47])
+        self.utim2 = hdarray[48].strip().decode('UTF-8')
 
+        x1 = list(hdarray[i+3].strip().decode('UTF-8') for i in range(8))
+        y1 = None
+        y1 = list(x1[i] for i in range(8) if x1[i] != u'')
+
+        x2 = list(hdarray[i+16].strip().decode('UTF-8') for i in range(8))
+        y2 = None
+        y2 = list(x2[i] for i in range(8) if x2[i] != u'')
+
+        x3 = list(hdarray[i+49].strip().decode('UTF-8') for i in range(10))
+        y3 = None
+        y3 = list(x3[i] for i in range(10) if x3[i] != u'')
+        self.add_attribs(edit=y1, ettl=y2, memo=y3)
+
+        self.cdate = hdarray[59].strip().decode('UTF-8')
+        self.csign = hdarray[60].strip().decode('UTF-8')
+        self.mdate = hdarray[61].strip().decode('UTF-8')
+        self.msign = hdarray[62].strip().decode('UTF-8')
+        self.size = int(hdarray[63])
+
+        self.set_hidden_attribs()
+
+        if (fname is not None):
+            self.fname = fname
+        pass
+
+    def set_hidden_attribs(self):
+        """
+        Set "hidden" attributes.
+        """
+        self.cyclic = ((len(self.dset) > 0) and self.dset[0] == 'C')
         self.isize = self.aend1 - self.astr1+1
         self.jsize = self.aend2 - self.astr2+1
         self.ksize = self.aend3 - self.astr3+1
@@ -225,49 +305,333 @@ class GT3Header:
             self.ijnum_packed = BitPacker.calc_packed_length(ijnum, self.packed_bit_width)
             self.data_bits = knum*2*8+8 + self.ijnum_packed*knum*8+8
 
-        if (fname is not None):
-            self.fname = fname
+    def add_attribs(self, ettl=None, edit=None, memo=None):
+        """
+        Add queue type attributes,  `ettl`, `edit`, `memo`.
+
+        These three attributes are implemented as __queue__, whose length
+        is 8, 8, 10, respectively.  If length of resulting list are
+        more than that, FIFO manner is applied.  Given argument must be
+        single string or a list, each element must be 16 characters or
+        less.
+
+        """
+        if (ettl is not None):
+            if (isinstance(ettl, list)):
+                self.ettl.extend(ettl)
+            elif (isinstance(ettl, tuple)):
+                self.ettl.extend(list(ettl))
+            else:
+                self.ettl.append(ettl)
+        if (edit is not None):
+            if (isinstance(edit, list)):
+                self.edit.extend(edit)
+            elif (isinstance(edit, tuple)):
+                self.edit.extend(list(edit))
+            else:
+                self.edit.append(edit)
+        if (memo is not None):
+            if (isinstance(memo, list)):
+                self.memo.extend(memo)
+            elif (isinstance(memo, tuple)):
+                self.memo.extend(list(memo))
+            else:
+                self.memo.append(memo)
         pass
 
-    def dump(self):
+
+    def dump(self, file=None):
+        """
+        Output summarize of this instance.
+
+        If `file` is given, this is given to print() method.
+        """
         if (self is not None):
             liner = '====== %s: header #%d ' % (self.fname, self.number)
             liner += "="*(80-len(liner))
-            print(liner)
-            print("dset : %s" % str(self.dset))
-            print("item : %s[%s]: %s" % (self.item, self.unit, self.titl))
-            print("date : %s(%d) with %d[%s]" % (self.date, self.time, self.tdur, self.utim))
+            print(liner, file=file)
+            print("dset : %s" % str(self.dset), file=file)
+            print("item : %s[%s]: %s" % (self.item, self.unit, self.titl), file=file)
+            print("date : %s(%d) with %d[%s]" % (self.date, self.time, self.tdur, self.utim), file=file)
             if (self.aitm3 != ''):
                 print("axis : %s[%d:%d] x %s[%d:%d] x %s[%d:%d]"
                       % (self.aitm1, self.astr1, self.aend1,
                          self.aitm2, self.astr2, self.aend2,
-                         self.aitm3, self.astr3, self.aend3))
+                         self.aitm3, self.astr3, self.aend3), file=file)
             elif (self.aitm2 != ''):
                 print("axis : %s[%d:%d] x %s[%d:%d]"
                       % (self.aitm1, self.astr1, self.aend1,
-                         self.aitm2, self.astr2, self.aend2))
+                         self.aitm2, self.astr2, self.aend2), file=file)
             else:
                 print("axis : %s[%d:%d]"
-                      % (self.aitm1, self.astr1, self.aend1))
-            print("cycl :", self.cyclic)
-            print("dfmt :", self.dfmt)
-            print("miss :", self.miss)
-            print("size :", self.size)
-            print("cdate: %s by %s" % (self.cdate, self.csign))
-            print("mdate: %s by %s" % (self.mdate, self.msign))
-            print('=' * len(liner))
+                      % (self.aitm1, self.astr1, self.aend1), file=file)
+            print("cycl :", self.cyclic, file=file)
+            print("dfmt :", self.dfmt, file=file)
+            print("miss :", self.miss, file=file)
+            print("size :", self.size, file=file)
+            print("edit :", list(self.edit), file=file)
+            print("ettl :", list(self.ettl), file=file)
+            print("memo :", list(self.memo), file=file)
+            print("cdate: %s by %s" % (self.cdate, self.csign), file=file)
+            print("mdate: %s by %s" % (self.mdate, self.msign), file=file)
+            print("isize,jsize,ksize: %d, %d, %d" % (self.isize, self.jsize, self.ksize), file=file)
+            print('=' * len(liner), file=file)
         pass
+
+    def pack(self):
+        """
+        Pack attribs of this instance to the array suitable for gtool3 header and return it.
+        """
+        hdarray = np.zeros((64,), dtype='a16')
+
+        hdarray[0] = "%16d" % 9010
+        hdarray[1] = "%-16s" % self.dset
+        hdarray[2] = "%-16s" % self.item
+        hdarray[3:11] = ["%-16s" % "" for i in range(8)]
+        i = 0
+        for v in self.edit:
+            hdarray[3+i] = "%-16s" % v
+            i += 1
+
+        hdarray[11] = "%16d" % self.fnum
+        hdarray[12] = "%16d" % self.dnum
+        hdarray[13] = "%-16s" % self.titl[:16]
+        hdarray[14] = "%-16s" % self.titl[16:]
+        hdarray[15] = "%-16s" % self.unit
+
+
+        hdarray[16:24] = ["%-16s" % "" for i in range(8)]
+        i = 0
+        for v in self.ettl:
+            hdarray[16+i] = "%-16s" % v
+            i += 1
+        hdarray[24] = "%16d" % self.time
+        hdarray[25] = "%-16s" % self.utim
+        hdarray[26] = "%-16s" % self.date
+        hdarray[27] = "%16d" % self.tdur
+        hdarray[28] = "%-16s" % self.aitm1
+        hdarray[29] = "%16d" % self.astr1
+        hdarray[30] = "%16d" % self.aend1
+        hdarray[31] = "%-16s" % self.aitm2
+        hdarray[32] = "%16d" % self.astr2
+        hdarray[33] = "%16d" % self.aend2
+        hdarray[34] = "%-16s" % self.aitm3
+        hdarray[35] = "%16d" % self.astr3
+        hdarray[36] = "%16d" % self.aend3
+        hdarray[37] = "%-16s" % self.dfmt
+        hdarray[38] = "%16.7e" % self.miss
+        hdarray[39] = "%16.7e" % self.dmin
+        hdarray[40] = "%16.7e" % self.dmax
+        hdarray[41] = "%16.7e" % self.divs
+        hdarray[42] = "%16.7e" % self.divl
+        hdarray[43] = "%16d" % self.styp
+        hdarray[44] = "%-16s" % self.coptn
+        hdarray[45] = "%16d" % self.ioptn
+        hdarray[46] = "%16.7e" % self.roptn
+        hdarray[47] = "%16d" % self.time2
+        hdarray[48] = "%-16s" % self.utim2
+        hdarray[49:59] = ["%-16s" % "" for i in range(10)]
+        i = 0
+        for v in self.memo:
+            hdarray[49+i] = "%-16s" % v
+            i += 1
+        hdarray[59] = "%-16s" % self.cdate
+        hdarray[60] = "%-16s" % self.csign
+        hdarray[61] = "%-16s" % self.mdate
+        hdarray[62] = "%-16s" % self.msign
+        hdarray[63] = "%16d" % self.size
+
+        return hdarray
 
 
 ################################################################################
 # Tests for GT3Header
 ################################################################################
 class TestGT3Header(unittest.TestCase):
-    # def test_hoge_01(self):
-    #     pass
+    def setUp(self):
+        self.maxDiff=None
+        np.set_printoptions(threshold=np.inf, linewidth=90, suppress=True)
+        self.orig_hdarray = np.array(
+            [b'            9010', b'test            ', b'hoge            ', b'edit0           ',
+             b'edit1           ', b'edit2           ', b'edit3           ', b'edit4           ',
+             b'edit5           ', b'edit6           ', b'edit7           ', b'               1',
+             b'               1', b'testdata for Tes', b'tGT3Header.pack(', b'-               ',
+             b'etitle0         ', b'etitle1         ', b'etitle2         ', b'etitle3         ',
+             b'etitle4         ', b'etitle5         ', b'etitle6         ', b'etitle7         ',
+             b'             399', b'HOUR            ', b'20180616 151200 ', b'               0',
+             b'GLON64          ', b'               1', b'              64', b'GGLA32          ',
+             b'               1', b'              32', b'SFC1            ', b'               1',
+             b'               1', b'UR4             ', b'  -9.9900000e+02', b'  -9.9900000e+02',
+             b'  -9.9900000e+02', b'  -9.9900000e+02', b'  -9.9900000e+02', b'               1',
+             b'                ', b'               0', b'   0.0000000e+00', b'             399',
+             b'HOUR            ', b'memo0           ', b'memo1           ', b'memo2           ',
+             b'memo3           ', b'memo4           ', b'memo5           ', b'memo6           ',
+             b'memo7           ', b'memo8           ', b'memo9           ', b'20180615 162709 ',
+             b'pygt3 library   ', b'20180615 162709 ', b'pygt3 library   ', b'               0'])
+        self.header = GT3Header(fname='test')
+        pass
 
-    pass
+    def test_init_dump_00(self):
+        """ __init__() and dump() """
+        with tempfile.TemporaryFile('w+') as f:
+            self.header.dump(file=f)
+            f.seek(0)
+            result = f.read()
+        expected = ("====== test: header #-1 ========================================================\n"
+                    "dset : \n"
+                    "item : []: \n"
+                    "date : (0) with 0[]\n"
+                    "axis : [0:0]\n"
+                    "cycl : False\n"
+                    "dfmt : UR4\n"
+                    "miss : -999.0\n"
+                    "size : 0\n"
+                    "edit : []\n"
+                    "ettl : []\n"
+                    "memo : []\n"
+                    "cdate: %s by pygt3 library\n"
+                    "mdate: %s by pygt3 library\n"
+                    "isize,jsize,ksize: 1, 1, 1\n"
+                    "================================================================================\n"
+                    % (self.header.cdate, self.header.mdate))
 
+        self.assertMultiLineEqual(result, expected)
+
+    def test_set_from_hdarray_01(self):
+        """ set_from_hdarray() and dump() """
+        self.header.set_from_hdarray(self.orig_hdarray, fname='test')
+        with tempfile.TemporaryFile('w+') as f:
+            self.header.dump(file=f)
+            f.seek(0)
+            result = f.read()
+        expected = ("====== test: header #-1 ========================================================\n"
+                    "dset : test\n"
+                    "item : hoge[-]: testdata for TestGT3Header.pack(\n"
+                    "date : 20180616 151200(399) with 0[HOUR]\n"
+                    "axis : GLON64[1:64] x GGLA32[1:32] x SFC1[1:1]\n"
+                    "cycl : False\n"
+                    "dfmt : UR4\n"
+                    "miss : -999.0\n"
+                    "size : 0\n"
+                    "edit : ['edit0', 'edit1', 'edit2', 'edit3', 'edit4', 'edit5', 'edit6', 'edit7']\n"
+                    "ettl : ['etitle0', 'etitle1', 'etitle2', 'etitle3', 'etitle4', 'etitle5', 'etitle6', 'etitle7']\n"
+                    "memo : ['memo0', 'memo1', 'memo2', 'memo3', 'memo4', 'memo5', 'memo6', 'memo7', 'memo8', 'memo9']\n"
+                    "cdate: %s by pygt3 library\n"
+                    "mdate: %s by pygt3 library\n"
+                    "isize,jsize,ksize: 64, 32, 1\n"
+                    "================================================================================\n"
+                    % (self.header.cdate, self.header.mdate))
+        self.assertMultiLineEqual(result, expected)
+
+    def test_init_pack_02(self):
+        """ __init__() and pack() GT3Header and hdarray """
+        header = GT3Header(dset='test', item='hoge', 
+                           title='testdata for TestGT3Header.pack()', unit='-',
+                           edit=["edit%d" % n for n in range(3)],
+                           fnum=1, dnum=1,
+                           ettl=["etitle%d" % n for n in range(3)],
+                           time=16*24+15, date='20180616 151200', utim='HOUR',
+                           aitm1='GLON64', astr1=1, aend1=64,
+                           aitm2='GGLA32', astr2=1, aend2=32,
+                           aitm3='SFC1', astr3=1, aend3=1,
+                           memo=["memo%d" % n for n in range(10)])
+        expected = np.array(
+            [b'            9010', b'test            ', b'hoge            ', b'edit0           ',
+             b'edit1           ', b'edit2           ', b'                ', b'                ',
+             b'                ', b'                ', b'                ', b'               1',
+             b'               1', b'testdata for Tes', b'tGT3Header.pack(', b'-               ',
+             b'etitle0         ', b'etitle1         ', b'etitle2         ', b'                ',
+             b'                ', b'                ', b'                ', b'                ',
+             b'             399', b'HOUR            ', b'20180616 151200 ', b'               0',
+             b'GLON64          ', b'               1', b'              64', b'GGLA32          ',
+             b'               1', b'              32', b'SFC1            ', b'               1',
+             b'               1', b'UR4             ', b'  -9.9900000e+02', b'  -9.9900000e+02',
+             b'  -9.9900000e+02', b'  -9.9900000e+02', b'  -9.9900000e+02', b'               1',
+             b'                ', b'               0', b'   0.0000000e+00', b'             399',
+             b'HOUR            ', b'memo0           ', b'memo1           ', b'memo2           ',
+             b'memo3           ', b'memo4           ', b'memo5           ', b'memo6           ',
+             b'memo7           ', b'memo8           ', b'memo9           ', b'20180616 150542 ',
+             b'pygt3 library   ', b'20180616 150542 ', b'pygt3 library   ', b'               0'])
+
+        hdarray = header.pack()
+
+        ### hdarray[59:] are changed by time to time.
+        for n in range(59):
+            # print(n,expected[n],hdarray[n])  ## dbg
+            self.assertEqual(expected[n], hdarray[n], msg="n=%d is mismatch !!" % n)
+
+    def test_set_from_hdarray_pack_03(self):
+        """ set_from_hdarray() and pack() GT3Header and hdarray """
+        self.header = GT3Header()
+        self.header.set_from_hdarray(self.orig_hdarray, fname='test')
+        hdarray = self.header.pack()
+        # np.testing.assert_array_equal(self.orig_hdarray, hdarray)
+        self.assertListEqual(list(hdarray), list(self.orig_hdarray))
+
+    def test_add_attribs_00(self):
+        """ add_attribs() for `ettl` """
+        self.header = GT3Header()
+        qq = deque('', maxlen=8)
+
+        ## one string
+        x = "x1" 
+        self.header.add_attribs(ettl=x)
+        qq.append(x)
+        self.assertSequenceEqual(self.header.ettl, qq)
+        ## tuple
+        x = ("x2", "x3", "x4", "x5")  
+        self.header.add_attribs(ettl=x)
+        qq.extend(x)
+        self.assertSequenceEqual(self.header.ettl, qq)
+        ## list, over queue size
+        x = ["x6", "x7", "x8", "x9"]
+        self.header.add_attribs(ettl=x)
+        qq.extend(x)
+        self.assertSequenceEqual(self.header.ettl, qq)
+
+    def test_add_attribs_01(self):
+        """ add_attribs() for `edit` """
+        self.header = GT3Header()
+        qq = deque('', maxlen=8)
+
+        ## one string
+        x = "x1" 
+        self.header.add_attribs(edit=x)
+        qq.append(x)
+        self.assertSequenceEqual(self.header.edit, qq)
+        ## tuple
+        x = ("x2", "x3", "x4", "x5")  
+        self.header.add_attribs(edit=x)
+        qq.extend(x)
+        self.assertSequenceEqual(self.header.edit, qq)
+        ## list, over queue size
+        x = ["x6", "x7", "x8", "x9"]
+        self.header.add_attribs(edit=x)
+        qq.extend(x)
+        self.assertSequenceEqual(self.header.edit, qq)
+        # print(list(self.header.edit))
+
+    def test_add_attribs_02(self):
+        """ add_attribs() for `memo` """
+        self.header = GT3Header()
+        qq = deque('', maxlen=10)
+
+        ## one string
+        x = "x1" 
+        self.header.add_attribs(memo=x)
+        qq.append(x)
+        self.assertSequenceEqual(self.header.memo, qq)
+        ## tuple
+        x = ("x2", "x3", "x4", "x5")  
+        self.header.add_attribs(memo=x)
+        qq.extend(x)
+        self.assertSequenceEqual(self.header.memo, qq)
+        ## list, over queue size
+        x = ["x6", "x7", "x8", "x9", "xA", "xB", "xC"]
+        self.header.add_attribs(memo=x)
+        qq.extend(x)
+        self.assertSequenceEqual(self.header.memo, qq)
+        # print(list(self.header.memo))
 
 ######################################################################
 class GT3File:
@@ -516,6 +880,18 @@ class GT3File:
 
         return(h, d)
 
+    def write_one_header(self):
+        """
+        Write `self.current_header` as one header.
+        """
+
+        dt = np.dtype([("head", ">i4"), ("header", "a16", 64), ("tail", ">i4")])
+        chunk = np.empty((1,), dtype=dt)
+        chunk["head"] = 64*16
+        chunk["tail"] = chunk["head"]
+        chunk["header"] = self.current_header.pack()
+        chunk.tofile(self.f)
+
 
 ################################################################################
 # Tests for GT3File
@@ -543,12 +919,12 @@ class GT3Axis():
     """
     gtool3 axis.
     """
-    
+
     default_search_paths = [u".", u"$GT3AXISDIR", u"$GTOOLDIR/gt3"]
 
     def __init__(self, name, search_paths=None):
         self.name = name
-        if ( search_paths is None):
+        if (search_paths is None):
             self.search_paths = self.default_search_paths
         else:
             self.search_paths = search_paths
