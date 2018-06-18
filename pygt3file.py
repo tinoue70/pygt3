@@ -4,7 +4,7 @@ from __future__ import print_function
 import numpy as np
 import pandas as pd
 import math
-import os
+import os, sys
 import datetime
 import unittest
 import tempfile
@@ -202,17 +202,17 @@ class GT3Header:
         self.coptn = ''
         self.ioptn = 0
         self.roptn = 0.
-        self.time2 = time
-        self.utim2 = utim
+        # self.time2 = time
+        # self.utim2 = date
         self.cdate = "{0:%Y%m%d %H%M%S}".format(datetime.datetime.now())
         self.csign = 'pygt3 library'
         self.mdate = self.cdate
         self.msign = 'pygt3 library'
-        self.size = 0
 
         self.fname = fname
         self.number = -1
         self.set_hidden_attribs()
+
         pass
 
     def set_from_hdarray(self, hdarray, fname=None):
@@ -254,8 +254,8 @@ class GT3Header:
             self.roptn = float(hdarray[46])
         else:
             self.roptn = None
-        self.time2 = int(hdarray[47])
-        self.utim2 = hdarray[48].strip().decode('UTF-8')
+        # self.time2 = hdarray[47].strip().decode('UTF-8')
+        # self.utim2 = hdarray[48].strip().decode('UTF-8')
 
         x1 = list(hdarray[i+3].strip().decode('UTF-8') for i in range(8))
         y1 = None
@@ -291,7 +291,7 @@ class GT3Header:
         self.jsize = self.aend2 - self.astr2+1
         self.ksize = self.aend3 - self.astr3+1
         self.shape = (self.ksize, self.jsize, self.isize)
-
+        self.size = self.isize * self.jsize * self.ksize
         if (self.dfmt[:3] == 'UR8'):
             self.data_bits = self.size*8+8
         elif (self.dfmt[:3] == 'UR4'):
@@ -428,8 +428,10 @@ class GT3Header:
         hdarray[44] = "%-16s" % self.coptn
         hdarray[45] = "%16d" % self.ioptn
         hdarray[46] = "%16.7e" % self.roptn
-        hdarray[47] = "%16d" % self.time2
-        hdarray[48] = "%-16s" % self.utim2
+        # hdarray[47] = "%-16s" % self.time2
+        # hdarray[48] = "%-16s" % self.utim2
+        hdarray[47] = "%-16s" % ""
+        hdarray[48] = "%-16s" % ""
         hdarray[49:59] = ["%-16s" % "" for i in range(10)]
         i = 0
         for v in self.memo:
@@ -463,11 +465,11 @@ class TestGT3Header(unittest.TestCase):
              b'               1', b'              32', b'SFC1            ', b'               1',
              b'               1', b'UR4             ', b'  -9.9900000e+02', b'  -9.9900000e+02',
              b'  -9.9900000e+02', b'  -9.9900000e+02', b'  -9.9900000e+02', b'               1',
-             b'                ', b'               0', b'   0.0000000e+00', b'             399',
-             b'HOUR            ', b'memo0           ', b'memo1           ', b'memo2           ',
+             b'                ', b'               0', b'   0.0000000e+00', b'                ',
+             b'                ', b'memo0           ', b'memo1           ', b'memo2           ',
              b'memo3           ', b'memo4           ', b'memo5           ', b'memo6           ',
              b'memo7           ', b'memo8           ', b'memo9           ', b'20180615 162709 ',
-             b'pygt3 library   ', b'20180615 162709 ', b'pygt3 library   ', b'               0'])
+             b'pygt3 library   ', b'20180615 162709 ', b'pygt3 library   ', b'            2048'])
         self.header = GT3Header(fname='test')
         pass
 
@@ -485,7 +487,7 @@ class TestGT3Header(unittest.TestCase):
                     "cycl : False\n"
                     "dfmt : UR4\n"
                     "miss : -999.0\n"
-                    "size : 0\n"
+                    "size : 1\n"
                     "edit : []\n"
                     "ettl : []\n"
                     "memo : []\n"
@@ -512,7 +514,7 @@ class TestGT3Header(unittest.TestCase):
                     "cycl : False\n"
                     "dfmt : UR4\n"
                     "miss : -999.0\n"
-                    "size : 0\n"
+                    "size : 2048\n"
                     "edit : ['edit0', 'edit1', 'edit2', 'edit3', 'edit4', 'edit5', 'edit6', 'edit7']\n"
                     "ettl : ['etitle0', 'etitle1', 'etitle2', 'etitle3', 'etitle4', 'etitle5', 'etitle6', 'etitle7']\n"
                     "memo : ['memo0', 'memo1', 'memo2', 'memo3', 'memo4', 'memo5', 'memo6', 'memo7', 'memo8', 'memo9']\n"
@@ -547,11 +549,11 @@ class TestGT3Header(unittest.TestCase):
              b'               1', b'              32', b'SFC1            ', b'               1',
              b'               1', b'UR4             ', b'  -9.9900000e+02', b'  -9.9900000e+02',
              b'  -9.9900000e+02', b'  -9.9900000e+02', b'  -9.9900000e+02', b'               1',
-             b'                ', b'               0', b'   0.0000000e+00', b'             399',
-             b'HOUR            ', b'memo0           ', b'memo1           ', b'memo2           ',
+             b'                ', b'               0', b'   0.0000000e+00', b'                ',
+             b'                ', b'memo0           ', b'memo1           ', b'memo2           ',
              b'memo3           ', b'memo4           ', b'memo5           ', b'memo6           ',
              b'memo7           ', b'memo8           ', b'memo9           ', b'20180616 150542 ',
-             b'pygt3 library   ', b'20180616 150542 ', b'pygt3 library   ', b'               0'])
+             b'pygt3 library   ', b'20180616 150542 ', b'pygt3 library   ', b'          2048  '])
 
         hdarray = header.pack()
 
@@ -714,7 +716,7 @@ class GT3File:
 
         return None
 
-    def show_table(self):
+    def show_table(self,file=None):
         """
         Show data table, created by scan().
         """
@@ -722,11 +724,12 @@ class GT3File:
         if (self.table is not None):
             liner = "="*5 + " Data table: "
             liner += "="*(80-len(liner))
-            print(liner)
-            print(self.table.to_string())
-            print("="*len(liner))
+            print(liner, file=file)
+            print(self.table.to_string(), file=file)
+            print("="*len(liner), file=file)
         else:
-            print("Data table is not created, use .scan() first.")
+            print("Data table is not created, use .scan() first.",file=sys.stderr)
+            sys.exit(1)
 
     def read_one_header(self):
         """
@@ -737,7 +740,7 @@ class GT3File:
 
         chunk = np.fromfile(self.f, dtype=dt, count=1)
         if (len(chunk)):
-            self.current_header.set(chunk["header"][0], self.name)
+            self.current_header.set_from_hdarray(chunk["header"][0], self.name)
             self.current_header.number += 1
             self.is_eof = False
             self.is_after_header = True
@@ -891,12 +894,73 @@ class GT3File:
         chunk["tail"] = chunk["head"]
         chunk["header"] = self.current_header.pack()
         chunk.tofile(self.f)
+        self.if_after_header = True
+
+    def set_current_data(self,d):
+        if (d.shape != self.current_header.shape):
+            print("Error: shape mismatch!")
+            print("in header:",self.current_header.shape)
+            print("in data  :",d.shape)
+            sys.exit(1)
+        self.current_data = d
+        pass
+
+    def write_one_data(self):
+        if (self.current_header.dfmt[:3] == 'UR4'):
+            dt = np.dtype([("head", ">i4"), ("body", ">f4", self.current_header.size), ("tail", ">i4")])
+            bytes = self.current_header.size*4
+            pass
+        elif (self.current_header.dfmt[:3] == 'UR8'):
+            bytes = self.current_header.size*8
+            raise NotImplementedError
+        elif (self.current_header.dfmt[:3] == 'URC'):
+            raise NotImplementedError
+        elif (self.current_header.dfmt[:3] == 'URY'):
+            raise NotImplementedError
+        else:
+            raise NotImplementedError('Unknown dfmt: %s' % self.current_header.dfmt)
+        chunk = np.empty((1,), dtype=dt)
+        chunk["head"] = bytes
+        chunk["tail"] = chunk["head"]
+        chunk["body"] = self.current_data.flatten()
+        chunk.tofile(self.f)
+        self.if_after_header = False
 
 
 ################################################################################
 # Tests for GT3File
 ################################################################################
 class TestGT3File(unittest.TestCase):
+    def setup(self):
+        """ write one header and data """
+        f1 = GT3File("test00", 'wb')
+        f1.current_header=GT3Header(dset='test', item='hoge', 
+                           title='testdata for TestGT3File', unit='-',
+                           time=16*24+15, date='20180616 150000', utim='HOUR',
+                           aitm1='GLON64', astr1=1, aend1=64,
+                           aitm2='GGLA32', astr2=1, aend2=32,
+                           aitm3='SFC1', astr3=1, aend3=1)
+        f1.set_current_data(np.zeros(shape=(1,32,64), dtype='f4'))
+        f1.write_one_header()
+        f1.write_one_data()
+
+        f1.current_header.date = '20180616 160000'
+        f1.current_header.time += 1
+        f1.set_current_data(np.zeros(shape=(1,32,64), dtype='f4'))
+        f1.write_one_header()
+        f1.write_one_data()
+
+        f1.current_header.date = '20180616 170000'
+        f1.current_header.time += 1
+        f1.set_current_data(np.zeros(shape=(1,32,64), dtype='f4'))
+        f1.write_one_header()
+        f1.write_one_data()
+
+        f1.close()
+
+    def test_write_00(self):
+        pass
+
     def test_read_00(self):
         """ Test for opening not exist file. """
         with self.assertRaises(OSError):
@@ -908,8 +972,39 @@ class TestGT3File(unittest.TestCase):
         """ Test for invalid mode."""
         with self.assertRaises(InvalidArgumentError):
             filename = 'prcpx'
-            mode = 'w'  # error
+            mode = 'w'  # error, must be 'wb'
             f1 = GT3File(filename, mode)
+
+    def test_read_02(self):
+        """ Test for writing and reading """
+        expected = ("===== Data table: ==============================================================\n"
+                    "   item  time dfmt\n"
+                    "0  hoge   399  UR4\n"
+                    "1  hoge   400  UR4\n"
+                    "2  hoge   401  UR4\n"
+                    "================================================================================\n")
+
+        f1 = GT3File('test00')
+        f1.scan()
+        with tempfile.TemporaryFile('w+') as f:
+            f1.show_table(file=f)
+            f.seek(0)
+            result = f.read()
+        self.assertMultiLineEqual(result, expected)
+        f1.close()
+
+    def test_read_03(self):
+        """ Test for read_current_header """
+        f1 = GT3File('test00')
+        f1.scan()
+        f1.read_one_header()
+        f1.read_one_data()
+
+        self.assertTrue(f1.current_data.dtype == np.dtype('>f4'))
+        self.assertTupleEqual(f1.current_data.shape, (1,32,64))
+        self.assertAlmostEqual(f1.current_data.mean(),0.)
+        f1.close()
+
 
 
 ################################################################################
