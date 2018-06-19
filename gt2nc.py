@@ -11,9 +11,9 @@ class A:
     """ general purpose bare class."""
     pass
 
-################################################################################
+###############################################################################
 # Here We Go
-################################################################################
+###############################################################################
 
 
 parser = argparse.ArgumentParser(description='Plot one data in gt3file')
@@ -35,11 +35,12 @@ parser.add_argument(
 parser.add_argument(
     '-o', '--ofile', help='output netcdf file name.',
     default='new.nc')
-
 parser.add_argument(
     '-n', '--number', help='data number to plot.',
     type=int, default=0)
-
+parser.add_argument(
+    '--axdir', help='axis file directory.',
+    default=None)
 
 a = A()
 parser.parse_args(namespace=a)
@@ -48,6 +49,10 @@ ifile = a.ifile
 ofile = a.ofile
 
 opt_data_number = a.number
+if (a.axdir is not None):
+    opt_axdir = a.axdir.split(':')
+else:
+    opt_axdir = None
 
 opt_header_only = a.header
 opt_show_table = a.table
@@ -61,12 +66,13 @@ if (opt_debug):
     print("dbg:opt_header_only:", opt_header_only)
     print("dbg:opt_show_table:", opt_show_table)
     print("dbg:opt_data_number:", opt_data_number)
+    print("dbg:opt_axdir:", opt_axdir)
     print("dbg:ifile:", ifile)
     print("dbg:ofile:", ofile)
 
-################################################################################
+###############################################################################
 # Extract target data
-################################################################################
+###############################################################################
 gf = GT3File(ifile)
 gf.opt_debug = opt_debug
 gf.opt_verbose = opt_verbose
@@ -89,31 +95,31 @@ gtvar.header, gtvar.data = gf.read_nth_data(opt_data_number)
 if (opt_verbose):
     gtvar.header.dump()
 gf.close()
-################################################################################
+###############################################################################
 # Prepare axis data
-################################################################################
+###############################################################################
 
-xax = GT3Axis(gtvar.header.aitm1)
+xax = GT3Axis(gtvar.header.aitm1, opt_axdir)
 if (xax.file is None):
     sys.exit(1)
 if (opt_debug):
     xax.dump()
 
-yax = GT3Axis(gtvar.header.aitm2)
+yax = GT3Axis(gtvar.header.aitm2, opt_axdir)
 if (yax.file is None):
     sys.exit(1)
 if (opt_debug):
     yax.dump()
 
-zax = GT3Axis(gtvar.header.aitm3)
+zax = GT3Axis(gtvar.header.aitm3, opt_axdir)
 if (zax.file is None):
     sys.exit(1)
 if (opt_debug):
     zax.dump()
 
-################################################################################
+###############################################################################
 # netCDF4
-################################################################################
+###############################################################################
 nf = netCDF4.Dataset(ofile, mode='w')
 
 xdim = nf.createDimension(xax.title, xax.size)
@@ -136,7 +142,8 @@ yvar.long_name = ydim.name
 zvar = nf.createVariable(zdim.name, np.float32, (zdim.name,))
 zvar.long_name = zdim.name
 
-ncvar = nf.createVariable(nf.title, np.float64, (zdim.name, ydim.name, xdim.name))
+ncvar = nf.createVariable(
+    nf.title, np.float64, (zdim.name, ydim.name, xdim.name))
 
 print('==== var: ====')
 print(ncvar)
