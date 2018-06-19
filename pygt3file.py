@@ -4,11 +4,13 @@ from __future__ import print_function
 import numpy as np
 import pandas as pd
 import math
-import os, sys
+import os
+import sys
 import unittest
 import tempfile
 from collections import deque
 from datetime import datetime
+
 
 class Error(Exception):
     """Base class for exceptions in this module."""
@@ -46,8 +48,11 @@ class BitPacker:
         for i in range(0, len_unpacked):
             i2 = i // BitPacker.base_bit_width
             i3 = i % BitPacker.base_bit_width
-            pos = pack_bit_width*i2 + ((pack_bit_width*i3)//BitPacker.base_bit_width)
-            off = pack_bit_width + ((pack_bit_width*i3) % BitPacker.base_bit_width) - BitPacker.base_bit_width
+            pos = pack_bit_width*i2 \
+                + ((pack_bit_width*i3)//BitPacker.base_bit_width)
+            off = pack_bit_width \
+                + ((pack_bit_width*i3) % BitPacker.base_bit_width)\
+                - BitPacker.base_bit_width
             off2 = off-BitPacker.base_bit_width
 
             # if ( off > 0 ):
@@ -68,9 +73,9 @@ class BitPacker:
         return unpacked
 
 
-################################################################################
+###############################################################################
 # Tests for BitPacker
-################################################################################
+###############################################################################
 class TestBitPacker(unittest.TestCase):
     def test_calc_packed_length_00(self):
         """ Test calc_packed_length(20,12) """
@@ -91,51 +96,46 @@ class TestBitPacker(unittest.TestCase):
 
     def test_unpack_01(self):
         """ Unpack 12bits packed """
-        packed = np.array([0x11122233, 0x34445556, 0x66777888, 0x77700000], 'int32')
-        reference = np.array([0x111, 0x222, 0x333, 0x444, 0x555, 0x666, 0x777, 0x888, 0x777], 'int32')
-        # for val in packed:
-        #     print(format(val, '12d'), format(val, '#034b'), format(val, '#08x'))
-
-        unpacked = BitPacker.unpack(packed, 12, 9)
-        # for val in unpacked:
-        #     print(format(val, '12d'), format(val, '#014b'), format(val, '#05x'))
-        self.assertEqual(tuple(unpacked), tuple(reference))
+        packed = np.array(
+            [0x11122233, 0x34445556, 0x66777888, 0x77700000],
+            'int32')
+        result = BitPacker.unpack(packed, 12, 9)
+        expected = np.array(
+            [0x111, 0x222, 0x333, 0x444, 0x555, 0x666, 0x777, 0x888, 0x777],
+            'int32')
+        self.assertEqual(tuple(result), tuple(expected))
 
     def test_unpack_02(self):
         """ Unpack 12bits packed """
-        packed = np.array([0xfffeeedd, 0xdcccbbba, 0xaa999888, 0xfff00000], 'uint32')
-        reference = np.array([0xfff, 0xeee, 0xddd, 0xccc, 0xbbb, 0xaaa, 0x999, 0x888, 0xfff], 'uint32')
-        # for val in packed:
-        #     print(format(val, '12d'), format(val, '#034b'), format(val, '#08x'))
-        unpacked = BitPacker.unpack(packed, 12, 9)
-        # for val in unpacked:
-        #     print(format(val, '12d'), format(val, '#014b'), format(val, '#05x'))
-        self.assertEqual(tuple(unpacked), tuple(reference))
+        packed = np.array(
+            [0xfffeeedd, 0xdcccbbba, 0xaa999888, 0xfff00000],
+            'uint32')
+        result = BitPacker.unpack(packed, 12, 9)
+        expected = np.array(
+            [0xfff, 0xeee, 0xddd, 0xccc, 0xbbb, 0xaaa, 0x999, 0x888, 0xfff],
+            'uint32')
+        self.assertEqual(tuple(result), tuple(expected))
 
     def test_unpack_11(self):
         """ Unpack 11bits packed """
-        packed = np.array([-285631830, -1002019192, -2004352786, -536870912], 'uint32')
-        reference = np.array([0x777, 0x666, 0x555, 0x444, 0x333, 0x222, 0x111, 0x000, 0x777])
-        # for val in packed:
-        #     print(format(val, '12d'), format(val, '#034b'), format(val, '#08x'))
-        unpacked = BitPacker.unpack(packed, 11, 9)
-        # for val in unpacked:
-        #     print(format(val, '12d'), format(val, '#013b'), format(val, '#05x'))
-        self.assertEqual(tuple(unpacked), tuple(reference))
+        packed = np.array(
+            [-285631830, -1002019192, -2004352786, -536870912],
+            'uint32')
+        result = BitPacker.unpack(packed, 11, 9)
+        expected = np.array(
+            [0x777, 0x666, 0x555, 0x444, 0x333, 0x222, 0x111, 0x000, 0x777])
+        self.assertEqual(tuple(result), tuple(expected))
 
     def test_unpack_21(self):
         """ Unpack 1bits packed """
         packed = np.array([1979711488], 'uint32')
-        reference = np.array([0x000, 0x001, 0x001, 0x001, 0x000, 0x001, 0x001, 0x000, 0x000])
-        # for val in packed:
-        #     print(format(val, '12d'), format(val, '#034b'), format(val, '#08x'))
-        unpacked = BitPacker.unpack(packed, 1, 9)
-        # for val in unpacked:
-        #     print(format(val, '12d'), format(val, '#013b'), format(val, '#05x'))
-        self.assertEqual(tuple(unpacked), tuple(reference))
+        result = BitPacker.unpack(packed, 1, 9)
+        expected = np.array(
+            [0x000, 0x001, 0x001, 0x001, 0x000, 0x001, 0x001, 0x000, 0x000])
+        self.assertEqual(tuple(result), tuple(expected))
 
 
-################################################################################
+###############################################################################
 class GT3Header:
     """GTOOL3 format header.
 
@@ -185,10 +185,10 @@ class GT3Header:
                 self.date = None
             else:
                 self.date = datetime.strptime(date, "%Y%m%d %H%M%S")
-        elif (isinstance(date,datetime)):
+        elif (isinstance(date, datetime)):
             self.date = date
         else:
-            raise InvalidArgumentError("date is invalid:",date)
+            raise InvalidArgumentError("date is invalid:", date)
         self.utim = utim
         self.tdur = int(tdur)
         self.aitm1 = aitm1
@@ -314,7 +314,8 @@ class GT3Header:
             knum = self.ksize
             ijnum = self.isize*self.jsize
             self.packed_bit_width = int(self.dfmt[3:])
-            self.ijnum_packed = BitPacker.calc_packed_length(ijnum, self.packed_bit_width)
+            self.ijnum_packed = BitPacker.calc_packed_length(
+                ijnum, self.packed_bit_width)
             self.data_bits = knum*2*8+8 + self.ijnum_packed*knum*8+8
 
     def add_attribs(self, ettl=None, edit=None, memo=None):
@@ -351,7 +352,6 @@ class GT3Header:
                 self.memo.append(memo)
         pass
 
-
     def dump(self, file=None):
         """
         Output summarize of this instance.
@@ -363,12 +363,9 @@ class GT3Header:
             liner += "="*(80-len(liner))
             print(liner, file=file)
             print("dset : %s" % str(self.dset), file=file)
-            print("item : %s[%s]: %s" % (self.item, self.unit, self.titl), file=file)
-            # if (self.date is None):
-            #     date = ''
-            # else:
-            #     date = self.date.strftime("%Y%m%d %H%M%S")
-            print("date : %s(%d) with %d[%s]" % 
+            print("item : %s[%s]: %s"
+                  % (self.item, self.unit, self.titl), file=file)
+            print("date : %s(%d) with %d[%s]" %
                   (self.date, self.time, self.tdur, self.utim), file=file)
             if (self.aitm3 != ''):
                 print("axis : %s[%d:%d] x %s[%d:%d] x %s[%d:%d]"
@@ -391,16 +388,17 @@ class GT3Header:
             print("memo :", list(self.memo), file=file)
             print("cdate: %s by %s" % (self.cdate, self.csign), file=file)
             print("mdate: %s by %s" % (self.mdate, self.msign), file=file)
-            print("isize,jsize,ksize: %d, %d, %d" % (self.isize, self.jsize, self.ksize), file=file)
+            print("isize,jsize,ksize: %d, %d, %d" 
+                  % (self.isize, self.jsize, self.ksize), file=file)
             print('=' * len(liner), file=file)
         pass
 
     def pack(self):
         """
-        Pack attribs of this instance to the array suitable for gtool3 header and return it.
+        Pack attribs of this instance to the array suitable for gtool3
+        header and return it.
         """
         hdarray = np.zeros((64,), dtype='a16')
-
         hdarray[0] = "%16d" % 9010
         hdarray[1] = "%-16s" % self.dset
         hdarray[2] = "%-16s" % self.item
@@ -409,14 +407,11 @@ class GT3Header:
         for v in self.edit:
             hdarray[3+i] = "%-16s" % v
             i += 1
-
         hdarray[11] = "%16d" % self.fnum
         hdarray[12] = "%16d" % self.dnum
         hdarray[13] = "%-16s" % self.titl[:16]
         hdarray[14] = "%-16s" % self.titl[16:]
         hdarray[15] = "%-16s" % self.unit
-
-
         hdarray[16:24] = ["%-16s" % "" for i in range(8)]
         i = 0
         for v in self.ettl:
@@ -463,12 +458,12 @@ class GT3Header:
         return hdarray
 
 
-################################################################################
+###############################################################################
 # Tests for GT3Header
-################################################################################
+###############################################################################
 class TestGT3Header(unittest.TestCase):
     def setUp(self):
-        self.maxDiff=None
+        self.maxDiff = None
         np.set_printoptions(threshold=np.inf, linewidth=90, suppress=True)
         self.orig_hdarray = np.array(
             [b'            9010', b'test            ', b'hoge            ', b'edit0           ',
@@ -496,23 +491,24 @@ class TestGT3Header(unittest.TestCase):
             header.dump(file=f)
             f.seek(0)
             result = f.read()
-        expected = ("====== test: header #-1 ========================================================\n"
-                    "dset : \n"
-                    "item : []: \n"
-                    "date : None(0) with 0[]\n"
-                    "axis : [0:0]\n"
-                    "cycl : False\n"
-                    "dfmt : UR4\n"
-                    "miss : -999.0\n"
-                    "size : 1\n"
-                    "edit : []\n"
-                    "ettl : []\n"
-                    "memo : []\n"
-                    "cdate: %s by pygt3 library\n"
-                    "mdate: %s by pygt3 library\n"
-                    "isize,jsize,ksize: 1, 1, 1\n"
-                    "================================================================================\n"
-                    % (header.cdate, header.mdate))
+        expected = (
+            "====== test: header #-1 ========================================================\n"
+            "dset : \n"
+            "item : []: \n"
+            "date : None(0) with 0[]\n"
+            "axis : [0:0]\n"
+            "cycl : False\n"
+            "dfmt : UR4\n"
+            "miss : -999.0\n"
+            "size : 1\n"
+            "edit : []\n"
+            "ettl : []\n"
+            "memo : []\n"
+            "cdate: %s by pygt3 library\n"
+            "mdate: %s by pygt3 library\n"
+            "isize,jsize,ksize: 1, 1, 1\n"
+            "================================================================================\n"
+            % (header.cdate, header.mdate))
 
         self.assertMultiLineEqual(result, expected)
 
@@ -524,28 +520,29 @@ class TestGT3Header(unittest.TestCase):
             header.dump(file=f)
             f.seek(0)
             result = f.read()
-        expected = ("====== test: header #-1 ========================================================\n"
-                    "dset : test\n"
-                    "item : hoge[-]: testdata for TestGT3Header.pack(\n"
-                    "date : 2018-06-16 15:12:00(399) with 0[HOUR]\n"
-                    "axis : GLON64[1:64] x GGLA32[1:32] x SFC1[1:1]\n"
-                    "cycl : False\n"
-                    "dfmt : UR4\n"
-                    "miss : -999.0\n"
-                    "size : 2048\n"
-                    "edit : ['edit0', 'edit1', 'edit2', 'edit3', 'edit4', 'edit5', 'edit6', 'edit7']\n"
-                    "ettl : ['etitle0', 'etitle1', 'etitle2', 'etitle3', 'etitle4', 'etitle5', 'etitle6', 'etitle7']\n"
-                    "memo : ['memo0', 'memo1', 'memo2', 'memo3', 'memo4', 'memo5', 'memo6', 'memo7', 'memo8', 'memo9']\n"
-                    "cdate: %s by pygt3 library\n"
-                    "mdate: %s by pygt3 library\n"
-                    "isize,jsize,ksize: 64, 32, 1\n"
-                    "================================================================================\n"
-                    % (header.cdate, header.mdate))
+        expected = (
+            "====== test: header #-1 ========================================================\n"
+            "dset : test\n"
+            "item : hoge[-]: testdata for TestGT3Header.pack(\n"
+            "date : 2018-06-16 15:12:00(399) with 0[HOUR]\n"
+            "axis : GLON64[1:64] x GGLA32[1:32] x SFC1[1:1]\n"
+            "cycl : False\n"
+            "dfmt : UR4\n"
+            "miss : -999.0\n"
+            "size : 2048\n"
+            "edit : ['edit0', 'edit1', 'edit2', 'edit3', 'edit4', 'edit5', 'edit6', 'edit7']\n"
+            "ettl : ['etitle0', 'etitle1', 'etitle2', 'etitle3', 'etitle4', 'etitle5', 'etitle6', 'etitle7']\n"
+            "memo : ['memo0', 'memo1', 'memo2', 'memo3', 'memo4', 'memo5', 'memo6', 'memo7', 'memo8', 'memo9']\n"
+            "cdate: %s by pygt3 library\n"
+            "mdate: %s by pygt3 library\n"
+            "isize,jsize,ksize: 64, 32, 1\n"
+            "================================================================================\n"
+            % (header.cdate, header.mdate))
         self.assertMultiLineEqual(result, expected)
 
     def test_init_pack_02(self):
         """ __init__() and pack() GT3Header and hdarray """
-        header = GT3Header(dset='test', item='hoge', 
+        header = GT3Header(dset='test', item='hoge',
                            title='testdata for TestGT3Header.pack()', unit='-',
                            edit=["edit%d" % n for n in range(3)],
                            fnum=1, dnum=1,
@@ -575,10 +572,10 @@ class TestGT3Header(unittest.TestCase):
 
         hdarray = header.pack()
 
-        ### hdarray[59:] are changed by time to time.
-        for n in range(59):
-            # print(n,expected[n],hdarray[n])  ## dbg
-            self.assertEqual(expected[n], hdarray[n], msg="n=%d is mismatch !!" % n)
+        # Skip check of hdarray[59:],these are changed by time to time.
+        for n in range(59):  
+            self.assertEqual(expected[n], hdarray[n],
+                             msg="n=%d is mismatch !!" % n)
 
     def test_set_from_hdarray_pack_03(self):
         """ set_from_hdarray() and pack() GT3Header and hdarray """
@@ -592,19 +589,15 @@ class TestGT3Header(unittest.TestCase):
         """ add_attribs() for `ettl` """
         header = GT3Header()
         qq = deque('', maxlen=8)
-
-        ## one string
-        x = "x1" 
+        x = "x1"  # single string
         header.add_attribs(ettl=x)
         qq.append(x)
         self.assertSequenceEqual(header.ettl, qq)
-        ## tuple
-        x = ("x2", "x3", "x4", "x5")  
+        x = ("x2", "x3", "x4", "x5")  # tuple
         header.add_attribs(ettl=x)
         qq.extend(x)
         self.assertSequenceEqual(header.ettl, qq)
-        ## list, over queue size
-        x = ["x6", "x7", "x8", "x9"]
+        x = ["x6", "x7", "x8", "x9"]  # list, over queue size
         header.add_attribs(ettl=x)
         qq.extend(x)
         self.assertSequenceEqual(header.ettl, qq)
@@ -613,19 +606,15 @@ class TestGT3Header(unittest.TestCase):
         """ add_attribs() for `edit` """
         header = GT3Header()
         qq = deque('', maxlen=8)
-
-        ## one string
-        x = "x1" 
+        x = "x1"  # one string
         header.add_attribs(edit=x)
         qq.append(x)
         self.assertSequenceEqual(header.edit, qq)
-        ## tuple
-        x = ("x2", "x3", "x4", "x5")  
+        x = ("x2", "x3", "x4", "x5")  # tuple
         header.add_attribs(edit=x)
         qq.extend(x)
         self.assertSequenceEqual(header.edit, qq)
-        ## list, over queue size
-        x = ["x6", "x7", "x8", "x9"]
+        x = ["x6", "x7", "x8", "x9"]  # list, over queue size
         header.add_attribs(edit=x)
         qq.extend(x)
         self.assertSequenceEqual(header.edit, qq)
@@ -635,33 +624,29 @@ class TestGT3Header(unittest.TestCase):
         """ add_attribs() for `memo` """
         header = GT3Header()
         qq = deque('', maxlen=10)
-
-        ## one string
-        x = "x1" 
+        x = "x1"  # one string
         header.add_attribs(memo=x)
         qq.append(x)
         self.assertSequenceEqual(header.memo, qq)
-        ## tuple
-        x = ("x2", "x3", "x4", "x5")  
+        x = ("x2", "x3", "x4", "x5")  # tuple
         header.add_attribs(memo=x)
         qq.extend(x)
         self.assertSequenceEqual(header.memo, qq)
-        ## list, over queue size
-        x = ["x6", "x7", "x8", "x9", "xA", "xB", "xC"]
+        x = ["x6", "x7", "x8", "x9", "xA", "xB", "xC"]  # list, over queue size
         header.add_attribs(memo=x)
         qq.extend(x)
         self.assertSequenceEqual(header.memo, qq)
         # print(list(header.memo))
 
-
     def test_date_00(self):
         """ test behavior of date. """
         t = (2018, 6, 19, 10, 16, 23)
-        h = GT3Header(date = "%04d%02d%02d %02d%02d%02d" % t)
+        h = GT3Header(date="%04d%02d%02d %02d%02d%02d" % t)
         # print(h.date)
         # print(datetime(*t))
         self.assertTrue(isinstance(h.date, datetime))
         self.assertEqual(h.date, datetime(*t))
+
 
 ######################################################################
 class GT3File:
@@ -714,7 +699,9 @@ class GT3File:
 
     def scan(self):
         """
-        Scan whole file and create data table, which is pandas.DataFrame instance.
+        Scan whole file and create data table.
+
+        Data table is a pandas.DataFrame instance.
         Note that file position is on the top after this method.
         """
         tbl = []
@@ -726,12 +713,18 @@ class GT3File:
                 break
             self.skip_one_data()
             self.num_of_data += 1
-            tbl.append([self.current_header.item, self.current_header.time, self.current_header.dfmt])
+            tbl.append([self.current_header.item,
+                        self.current_header.time,
+                        self.current_header.dfmt])
         self.rewind()
         self.table = pd.DataFrame(tbl)
-        self.table.columns = ['item', 'time', 'dfmt']
-        self.num_of_times = self.table.pivot_table(index='time', aggfunc=[len]).shape[0]
-        self.num_of_items = self.table.pivot_table(index='item', aggfunc=[len]).shape[0]
+        self.table.columns = ['item',
+                              'time',
+                              'dfmt']
+        self.num_of_times = self.table.pivot_table(
+            index='time', aggfunc=[len]).shape[0]
+        self.num_of_items = self.table.pivot_table(
+            index='item', aggfunc=[len]).shape[0]
 
         if (self.opt_verbose):
             liner = "="*5 + " %s: Scan result: " % self.name
@@ -744,7 +737,7 @@ class GT3File:
 
         return None
 
-    def show_table(self,file=None):
+    def show_table(self, file=None):
         """
         Show data table, created by scan().
         """
@@ -756,7 +749,8 @@ class GT3File:
             print(self.table.to_string(), file=file)
             print("="*len(liner), file=file)
         else:
-            print("Data table is not created, use .scan() first.",file=sys.stderr)
+            print("Data table is not created, use .scan() first.",
+                  file=sys.stderr)
             sys.exit(1)
 
     def read_one_header(self):
@@ -764,11 +758,13 @@ class GT3File:
         Read one header and it as a `current_header`.
         """
 
-        dt = np.dtype([("head", ">i4"), ("header", "a16", 64), ("tail", ">i4")])
+        dt = np.dtype(
+            [("head", ">i4"), ("header", "a16", 64), ("tail", ">i4")])
 
         chunk = np.fromfile(self.f, dtype=dt, count=1)
         if (len(chunk)):
-            self.current_header.set_from_hdarray(chunk["header"][0], self.name)
+            self.current_header.set_from_hdarray(
+                chunk["header"][0], self.name)
             self.current_header.number += 1
             self.is_eof = False
             self.is_after_header = True
@@ -780,52 +776,63 @@ class GT3File:
 
     def read_one_data(self):
         if (self.current_header.dfmt[:3] == 'UR8'):
-            dt = np.dtype([("head", ">i4"), ("data", ">f8", self.current_header.size), ("tail", ">i4")])
+            dt = np.dtype([
+                ("head", ">i4"),
+                ("data", ">f8", self.current_header.size),
+                ("tail", ">i4")])
             chunk = np.fromfile(self.f, dtype=dt, count=1)
             if (chunk["head"] != chunk["tail"]):
                 raise IOError
-            self.current_data = np.array(chunk["data"][0]).reshape(self.current_header.shape)
+            self.current_data = np.array(
+                chunk["data"][0]).reshape(self.current_header.shape)
         elif (self.current_header.dfmt[:3] == 'UR4'):
-            dt = np.dtype([("head", ">i4"), ("data", ">f4", self.current_header.size), ("tail", ">i4")])
+            dt = np.dtype([
+                ("head", ">i4"),
+                ("data", ">f4", self.current_header.size),
+                ("tail", ">i4")])
             chunk = np.fromfile(self.f, dtype=dt, count=1)
             if (chunk["head"] != chunk["tail"]):
                 raise IOError
-            self.current_data = np.array(chunk["data"][0]).reshape(self.current_header.shape)
+            self.current_data = np.array(
+                chunk["data"][0]).reshape(self.current_header.shape)
         elif (self.current_header.dfmt[:3] == 'URC'):
             raise NotImplementedError
         elif (self.current_header.dfmt[:3] == 'URY'):
             packed_bit_width = int(self.current_header.dfmt[3:])
-            # print("dbg:packed_bit_width=%d" % packed_bit_width)
-
             ijnum = self.current_header.isize * self.current_header.jsize
             knum = self.current_header.ksize
-            # print("dbg:ijnum, knum=%d, %d" % (ijnum,knum))
 
-            # coeffs[*,0] is the offset values, coeffs[*,1] is the scale values.
-            dt = np.dtype([("head", ">i4"), ("data", ">f8", knum*2), ("tail", ">i4")])
+            # coeffs[*,0] is the offset values,
+            # coeffs[*,1] is the scale values.
+            dt = np.dtype([
+                ("head", ">i4"),
+                ("data", ">f8", knum*2),
+                ("tail", ">i4")])
             chunk = np.fromfile(self.f, dtype=dt, count=1)
             if (chunk["head"] != chunk["tail"]):
                 raise IOError
             coeffs = chunk["data"][0].reshape(knum, 2)
-            # print('dbg:type(coeffs):',type(coeffs),coeffs.shape, coeffs.dtype)
-            # print("dbg:coeffs:\n",coeffs)
 
-            ijnum_packed = BitPacker.calc_packed_length(ijnum, packed_bit_width)
-            # print("dbg:ijnum_packed=%d" % ijnum_packed)
-            dt = np.dtype([("head", ">i4"), ("data", ">i4", ijnum_packed*knum), ("tail", ">i4")])
+            ijnum_packed = BitPacker.calc_packed_length(
+                ijnum, packed_bit_width)
+            dt = np.dtype([
+                ("head", ">i4"),
+                ("data", ">i4", ijnum_packed*knum),
+                ("tail", ">i4")])
             chunk = np.fromfile(self.f, dtype=dt, count=1)
             if (chunk["head"] != chunk["tail"]):
                 raise IOError
             packed = chunk["data"][0].reshape(knum, ijnum_packed)
-            # print("dbg:packed:",packed.dtype,packed.shape)
 
             for k in range(knum):
-                unpacked = BitPacker.unpack(packed[k, :], packed_bit_width, ijnum)
-                # print("dbg:unpacked:",unpacked)
-                self.current_data = np.ndarray(shape=(knum, ijnum), dtype="float64")
-                # print('dbg',self.current_data.shape)
-                self.current_data[k, :] = coeffs[k, 0] + unpacked[:] * coeffs[k, 1]
-            self.current_data = self.current_data.reshape(self.current_header.shape)
+                unpacked = BitPacker.unpack(
+                    packed[k, :], packed_bit_width, ijnum)
+                self.current_data = np.ndarray(
+                    shape=(knum, ijnum), dtype="float64")
+                self.current_data[k, :] = (coeffs[k, 0]
+                                           + unpacked[:] * coeffs[k, 1])
+            self.current_data = self.current_data.reshape(
+                self.current_header.shape)
         elif (self.current_header.dfmt[:3] == 'MRY'):
             raise NotImplementedError
 
@@ -849,7 +856,8 @@ class GT3File:
             packed_bit_width = int(self.current_header.dfmt[3:])
             knum = self.current_header.ksize
             ijnum = self.current_header.isize*self.current_header.jsize
-            ijnum_packed = BitPacker.calc_packed_length(ijnum, packed_bit_width)
+            ijnum_packed = BitPacker.calc_packed_length(
+                ijnum, packed_bit_width)
             size = knum*2*8+8 + ijnum_packed*knum*8+8
         else:
             raise NotImplementedError
@@ -865,15 +873,19 @@ class GT3File:
     def dump_current_data(self, **kwargs):
         np.set_printoptions(threshold=np.inf, linewidth=110, suppress=True)
 
-        liner = '====== %s: data #%d ' % (self.name, self.current_header.number)
+        liner = '====== %s: data #%d ' \
+                % (self.name, self.current_header.number)
         liner += "="*(80-len(liner))
         if (self.opt_debug):
             print("dbg:current_data:")
             print("  flags:")
             print(self.current_data.flags)
             print("  dtype:", self.current_data.dtype)
-            print("  size,itemsize:", self.current_data.size, self.current_data.itemsize)
-            print("  ndim, shape, strides:", self.current_data.ndim, self.current_data.shape, self.current_data.strides)
+            print("  size,itemsize:",
+                  self.current_data.size, self.current_data.itemsize)
+            print("  ndim, shape, strides:",
+                  self.current_data.ndim, self.current_data.shape,
+                  self.current_data.strides)
         print(liner)
         if (len(kwargs) > 0):
             np.set_printoptions(**kwargs)
@@ -916,7 +928,10 @@ class GT3File:
         Write `self.current_header` as one header.
         """
 
-        dt = np.dtype([("head", ">i4"), ("header", "a16", 64), ("tail", ">i4")])
+        dt = np.dtype([
+            ("head", ">i4"),
+            ("header", "a16", 64),
+            ("tail", ">i4")])
         chunk = np.empty((1,), dtype=dt)
         chunk["head"] = 64*16
         chunk["tail"] = chunk["head"]
@@ -924,18 +939,21 @@ class GT3File:
         chunk.tofile(self.f)
         self.if_after_header = True
 
-    def set_current_data(self,d):
+    def set_current_data(self, d):
         if (d.shape != self.current_header.shape):
             print("Error: shape mismatch!")
-            print("in header:",self.current_header.shape)
-            print("in data  :",d.shape)
+            print("in header:", self.current_header.shape)
+            print("in data  :", d.shape)
             sys.exit(1)
         self.current_data = d
         pass
 
     def write_one_data(self):
         if (self.current_header.dfmt[:3] == 'UR4'):
-            dt = np.dtype([("head", ">i4"), ("body", ">f4", self.current_header.size), ("tail", ">i4")])
+            dt = np.dtype([
+                ("head", ">i4"),
+                ("body", ">f4", self.current_header.size),
+                ("tail", ">i4")])
             bytes = self.current_header.size*4
             pass
         elif (self.current_header.dfmt[:3] == 'UR8'):
@@ -946,7 +964,8 @@ class GT3File:
         elif (self.current_header.dfmt[:3] == 'URY'):
             raise NotImplementedError
         else:
-            raise NotImplementedError('Unknown dfmt: %s' % self.current_header.dfmt)
+            raise NotImplementedError('Unknown dfmt: %s'
+                                      % self.current_header.dfmt)
         chunk = np.empty((1,), dtype=dt)
         chunk["head"] = bytes
         chunk["tail"] = chunk["head"]
@@ -955,32 +974,33 @@ class GT3File:
         self.if_after_header = False
 
 
-################################################################################
+###############################################################################
 # Tests for GT3File
-################################################################################
+###############################################################################
 class TestGT3File(unittest.TestCase):
     def setup(self):
         """ write one header and data """
         f1 = GT3File("test00", 'wb')
-        f1.current_header=GT3Header(dset='test', item='hoge', 
-                           title='testdata for TestGT3File', unit='-',
-                           time=16*24+15, date='20180616 150000', utim='HOUR',
-                           aitm1='GLON64', astr1=1, aend1=64,
-                           aitm2='GGLA32', astr2=1, aend2=32,
-                           aitm3='SFC1', astr3=1, aend3=1)
-        f1.set_current_data(np.zeros(shape=(1,32,64), dtype='f4'))
+        f1.current_header = GT3Header(
+            dset='test', item='hoge',
+            title='testdata for TestGT3File', unit='-',
+            time=16*24+15, date='20180616 150000', utim='HOUR',
+            aitm1='GLON64', astr1=1, aend1=64,
+            aitm2='GGLA32', astr2=1, aend2=32,
+            aitm3='SFC1', astr3=1, aend3=1)
+        f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
         f1.write_one_header()
         f1.write_one_data()
 
         f1.current_header.date = '20180616 160000'
         f1.current_header.time += 1
-        f1.set_current_data(np.zeros(shape=(1,32,64), dtype='f4'))
+        f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
         f1.write_one_header()
         f1.write_one_data()
 
         f1.current_header.date = '20180616 170000'
         f1.current_header.time += 1
-        f1.set_current_data(np.zeros(shape=(1,32,64), dtype='f4'))
+        f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
         f1.write_one_header()
         f1.write_one_data()
 
@@ -1005,12 +1025,13 @@ class TestGT3File(unittest.TestCase):
 
     def test_read_02(self):
         """ Test for writing and reading """
-        expected = ("===== Data table: ==============================================================\n"
-                    "   item  time dfmt\n"
-                    "0  hoge   399  UR4\n"
-                    "1  hoge   400  UR4\n"
-                    "2  hoge   401  UR4\n"
-                    "================================================================================\n")
+        expected = (
+            "===== Data table: ==============================================================\n"
+            "   item  time dfmt\n"
+            "0  hoge   399  UR4\n"
+            "1  hoge   400  UR4\n"
+            "2  hoge   401  UR4\n"
+            "================================================================================\n")
 
         f1 = GT3File('test00')
         f1.scan()
@@ -1029,15 +1050,14 @@ class TestGT3File(unittest.TestCase):
         f1.read_one_data()
 
         self.assertTrue(f1.current_data.dtype == np.dtype('>f4'))
-        self.assertTupleEqual(f1.current_data.shape, (1,32,64))
-        self.assertAlmostEqual(f1.current_data.mean(),0.)
+        self.assertTupleEqual(f1.current_data.shape, (1, 32, 64))
+        self.assertAlmostEqual(f1.current_data.mean(), 0.)
         f1.close()
 
 
-
-################################################################################
+###############################################################################
 # Axis for GTOOL3
-################################################################################
+###############################################################################
 class GT3Axis():
     """
     gtool3 axis.
@@ -1073,7 +1093,10 @@ class GT3Axis():
 
     def find_axfile(self):
         """
-        Find gtool3 axis file with given axis name `name` from path listed as `self.search_paths`.
+        Find gtool3 axis file.
+
+        With given axis name `name` from path listed as
+        `self.search_paths`.
 
         Return path of the found axis file or `None` unless found.
         """
@@ -1090,7 +1113,8 @@ class GT3Axis():
         if (found):
             self.file = axfile
         else:
-            print('Axis "%s" Not found in path(s): %s' % (self.name, ":".join(self.search_paths)))
+            print('Axis "%s" Not found in path(s): %s'
+                  % (self.name, ":".join(self.search_paths)))
             self.file = None
 
         pass
@@ -1107,9 +1131,9 @@ class GT3Axis():
         print('='*len(liner))
         pass
 
-################################################################################
+###############################################################################
 # Here we go.
-################################################################################
+###############################################################################
 
 
 if __name__ == '__main__':
