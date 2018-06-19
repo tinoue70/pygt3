@@ -125,7 +125,7 @@ if (opt_debug):
     print("* shape:", target_data.shape)
 
 if (opt_vert_level not in range(target_data.shape[0])):
-    print('Error: vertical level out of range: %d is not in range(%d)'
+    print('Error: vertical level out of range: %d is not in range(:%d)'
           % (opt_vert_level, target_data.shape[0]))
     sys.exit(1)
 
@@ -160,8 +160,10 @@ img = ax.contourf(xax.data, yax.data, target_data[opt_vert_level, :, :], 60,
                   transform=ccrs.PlateCarree())
 
 ax.axis("image")
-title = "%s:%s[%s]" % (
-    target_header.item, target_header.titl, target_header.unit)
+title = "%s:%s[%s] lvl=%d" % (
+    target_header.item, target_header.titl, target_header.unit,
+    opt_vert_level
+)
 ax.set(title=title)
 ax.coastlines()
 
