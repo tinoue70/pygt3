@@ -5,6 +5,7 @@ from pygt3file import GT3File
 import argparse
 import sys
 
+
 class A:
     """ base class for argparse,"""
     pass
@@ -48,7 +49,7 @@ opt_debug = a.debug
 if (opt_debug):
     print("dbg:opt_header_only:", opt_header_only)
     print("dbg:opt_show_table:", opt_show_table)
-    print("dbg:opt_numbers:",opt_numbers)
+    print("dbg:opt_numbers:", opt_numbers)
     print("dbg:file:", file)
 
 f = GT3File(file)
@@ -74,3 +75,5 @@ while True:
             f.dump_current_data()
         else:
             f.skip_one_data()
+
+f.close()
