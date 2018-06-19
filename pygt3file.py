@@ -226,11 +226,24 @@ class GT3Header:
     def set_from_hdarray(self, hdarray, fname=None):
         """
         Set GT3Header from hdarray, which is an 'a16'*64 ndarray.
+
+        In some of gtool3 datefile, such as axis, input data, etc.,
+        year in `date` field is set as 0000, which cannot be handled
+        by standard datetime module. So these are set as `None` here
+        tentatively.
         """
         self.dset = hdarray[1].strip().decode('UTF-8')
         self.item = hdarray[2].strip().decode('UTF-8')
-        self.fnum = int(hdarray[11])
-        self.dnum = int(hdarray[12])
+        fnum = hdarray[11].strip().decode('UTF-8')
+        if (fnum == ''):
+            self.fnum = None
+        else:
+            self.fnum = fnum
+        dnum = hdarray[12].strip().decode('UTF-8')
+        if (dnum == ''):
+            self.dnum = None
+        else:
+            self.dnum = dnum
         self.titl = (hdarray[13]+hdarray[14]).strip().decode('UTF-8')
         self.unit = hdarray[15].strip().decode('UTF-8')
         self.time = int(hdarray[24])
@@ -239,7 +252,13 @@ class GT3Header:
         if (len(date) == 0):
             self.date = None
         else:
-            self.date = datetime.strptime(date, "%Y%m%d %H%M%S")
+            try:
+                self.date = datetime.strptime(date, "%Y%m%d %H%M%S")
+            except ValueError:
+                if (date[:4] == '0000'):
+                    self.date = None
+                else:
+                    raise ValueError
         self.tdur = int(hdarray[27])
         self.aitm1 = hdarray[28].strip().decode('UTF-8')
         self.astr1 = int(hdarray[29])
@@ -407,8 +426,14 @@ class GT3Header:
         for v in self.edit:
             hdarray[3+i] = "%-16s" % v
             i += 1
-        hdarray[11] = "%16d" % self.fnum
-        hdarray[12] = "%16d" % self.dnum
+        if (self.fnum is None):
+            hdarray[11] = "%16d" % ''
+        else:
+            hdarray[11] = "%16d" % self.fnum
+        if (self.dnum is None):
+            hdarray[12] = "%16d" % ''
+        else:
+            hdarray[12] = "%16d" % self.dnum
         hdarray[13] = "%-16s" % self.titl[:16]
         hdarray[14] = "%-16s" % self.titl[16:]
         hdarray[15] = "%-16s" % self.unit
