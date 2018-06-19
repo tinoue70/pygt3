@@ -5,10 +5,10 @@ import numpy as np
 import pandas as pd
 import math
 import os, sys
-import datetime
 import unittest
 import tempfile
 from collections import deque
+from datetime import datetime
 
 class Error(Exception):
     """Base class for exceptions in this module."""
@@ -180,7 +180,15 @@ class GT3Header:
         self.titl = title
         self.unit = unit
         self.time = int(time)
-        self.date = date
+        if (isinstance(date, str)):
+            if (len(date) == 0):
+                self.date = None
+            else:
+                self.date = datetime.strptime(date, "%Y%m%d %H%M%S")
+        elif (isinstance(date,datetime)):
+            self.date = date
+        else:
+            raise InvalidArgumentError("date is invalid:",date)
         self.utim = utim
         self.tdur = int(tdur)
         self.aitm1 = aitm1
@@ -204,7 +212,7 @@ class GT3Header:
         self.roptn = 0.
         # self.time2 = time
         # self.utim2 = date
-        self.cdate = "{0:%Y%m%d %H%M%S}".format(datetime.datetime.now())
+        self.cdate = "{0:%Y%m%d %H%M%S}".format(datetime.now())
         self.csign = 'pygt3 library'
         self.mdate = self.cdate
         self.msign = 'pygt3 library'
@@ -227,7 +235,11 @@ class GT3Header:
         self.unit = hdarray[15].strip().decode('UTF-8')
         self.time = int(hdarray[24])
         self.utim = hdarray[25].strip().decode('UTF-8')
-        self.date = hdarray[26].strip().decode('UTF-8')
+        date = hdarray[26].strip().decode('UTF-8')
+        if (len(date) == 0):
+            self.date = None
+        else:
+            self.date = datetime.strptime(date, "%Y%m%d %H%M%S")
         self.tdur = int(hdarray[27])
         self.aitm1 = hdarray[28].strip().decode('UTF-8')
         self.astr1 = int(hdarray[29])
@@ -352,7 +364,12 @@ class GT3Header:
             print(liner, file=file)
             print("dset : %s" % str(self.dset), file=file)
             print("item : %s[%s]: %s" % (self.item, self.unit, self.titl), file=file)
-            print("date : %s(%d) with %d[%s]" % (self.date, self.time, self.tdur, self.utim), file=file)
+            # if (self.date is None):
+            #     date = ''
+            # else:
+            #     date = self.date.strftime("%Y%m%d %H%M%S")
+            print("date : %s(%d) with %d[%s]" % 
+                  (self.date, self.time, self.tdur, self.utim), file=file)
             if (self.aitm3 != ''):
                 print("axis : %s[%d:%d] x %s[%d:%d] x %s[%d:%d]"
                       % (self.aitm1, self.astr1, self.aend1,
@@ -407,7 +424,7 @@ class GT3Header:
             i += 1
         hdarray[24] = "%16d" % self.time
         hdarray[25] = "%-16s" % self.utim
-        hdarray[26] = "%-16s" % self.date
+        hdarray[26] = "%-16s" % self.date.strftime("%Y%m%d %H%M%S")
         hdarray[27] = "%16d" % self.tdur
         hdarray[28] = "%-16s" % self.aitm1
         hdarray[29] = "%16d" % self.astr1
@@ -470,19 +487,19 @@ class TestGT3Header(unittest.TestCase):
              b'memo3           ', b'memo4           ', b'memo5           ', b'memo6           ',
              b'memo7           ', b'memo8           ', b'memo9           ', b'20180615 162709 ',
              b'pygt3 library   ', b'20180615 162709 ', b'pygt3 library   ', b'            2048'])
-        self.header = GT3Header(fname='test')
         pass
 
     def test_init_dump_00(self):
         """ __init__() and dump() """
         with tempfile.TemporaryFile('w+') as f:
-            self.header.dump(file=f)
+            header = GT3Header(fname='test')
+            header.dump(file=f)
             f.seek(0)
             result = f.read()
         expected = ("====== test: header #-1 ========================================================\n"
                     "dset : \n"
                     "item : []: \n"
-                    "date : (0) with 0[]\n"
+                    "date : None(0) with 0[]\n"
                     "axis : [0:0]\n"
                     "cycl : False\n"
                     "dfmt : UR4\n"
@@ -495,21 +512,22 @@ class TestGT3Header(unittest.TestCase):
                     "mdate: %s by pygt3 library\n"
                     "isize,jsize,ksize: 1, 1, 1\n"
                     "================================================================================\n"
-                    % (self.header.cdate, self.header.mdate))
+                    % (header.cdate, header.mdate))
 
         self.assertMultiLineEqual(result, expected)
 
     def test_set_from_hdarray_01(self):
         """ set_from_hdarray() and dump() """
-        self.header.set_from_hdarray(self.orig_hdarray, fname='test')
+        header = GT3Header(fname='test')
+        header.set_from_hdarray(self.orig_hdarray, fname='test')
         with tempfile.TemporaryFile('w+') as f:
-            self.header.dump(file=f)
+            header.dump(file=f)
             f.seek(0)
             result = f.read()
         expected = ("====== test: header #-1 ========================================================\n"
                     "dset : test\n"
                     "item : hoge[-]: testdata for TestGT3Header.pack(\n"
-                    "date : 20180616 151200(399) with 0[HOUR]\n"
+                    "date : 2018-06-16 15:12:00(399) with 0[HOUR]\n"
                     "axis : GLON64[1:64] x GGLA32[1:32] x SFC1[1:1]\n"
                     "cycl : False\n"
                     "dfmt : UR4\n"
@@ -522,7 +540,7 @@ class TestGT3Header(unittest.TestCase):
                     "mdate: %s by pygt3 library\n"
                     "isize,jsize,ksize: 64, 32, 1\n"
                     "================================================================================\n"
-                    % (self.header.cdate, self.header.mdate))
+                    % (header.cdate, header.mdate))
         self.assertMultiLineEqual(result, expected)
 
     def test_init_pack_02(self):
@@ -564,76 +582,86 @@ class TestGT3Header(unittest.TestCase):
 
     def test_set_from_hdarray_pack_03(self):
         """ set_from_hdarray() and pack() GT3Header and hdarray """
-        self.header = GT3Header()
-        self.header.set_from_hdarray(self.orig_hdarray, fname='test')
-        hdarray = self.header.pack()
+        header = GT3Header()
+        header.set_from_hdarray(self.orig_hdarray, fname='test')
+        hdarray = header.pack()
         # np.testing.assert_array_equal(self.orig_hdarray, hdarray)
         self.assertListEqual(list(hdarray), list(self.orig_hdarray))
 
     def test_add_attribs_00(self):
         """ add_attribs() for `ettl` """
-        self.header = GT3Header()
+        header = GT3Header()
         qq = deque('', maxlen=8)
 
         ## one string
         x = "x1" 
-        self.header.add_attribs(ettl=x)
+        header.add_attribs(ettl=x)
         qq.append(x)
-        self.assertSequenceEqual(self.header.ettl, qq)
+        self.assertSequenceEqual(header.ettl, qq)
         ## tuple
         x = ("x2", "x3", "x4", "x5")  
-        self.header.add_attribs(ettl=x)
+        header.add_attribs(ettl=x)
         qq.extend(x)
-        self.assertSequenceEqual(self.header.ettl, qq)
+        self.assertSequenceEqual(header.ettl, qq)
         ## list, over queue size
         x = ["x6", "x7", "x8", "x9"]
-        self.header.add_attribs(ettl=x)
+        header.add_attribs(ettl=x)
         qq.extend(x)
-        self.assertSequenceEqual(self.header.ettl, qq)
+        self.assertSequenceEqual(header.ettl, qq)
 
     def test_add_attribs_01(self):
         """ add_attribs() for `edit` """
-        self.header = GT3Header()
+        header = GT3Header()
         qq = deque('', maxlen=8)
 
         ## one string
         x = "x1" 
-        self.header.add_attribs(edit=x)
+        header.add_attribs(edit=x)
         qq.append(x)
-        self.assertSequenceEqual(self.header.edit, qq)
+        self.assertSequenceEqual(header.edit, qq)
         ## tuple
         x = ("x2", "x3", "x4", "x5")  
-        self.header.add_attribs(edit=x)
+        header.add_attribs(edit=x)
         qq.extend(x)
-        self.assertSequenceEqual(self.header.edit, qq)
+        self.assertSequenceEqual(header.edit, qq)
         ## list, over queue size
         x = ["x6", "x7", "x8", "x9"]
-        self.header.add_attribs(edit=x)
+        header.add_attribs(edit=x)
         qq.extend(x)
-        self.assertSequenceEqual(self.header.edit, qq)
-        # print(list(self.header.edit))
+        self.assertSequenceEqual(header.edit, qq)
+        # print(list(header.edit))
 
     def test_add_attribs_02(self):
         """ add_attribs() for `memo` """
-        self.header = GT3Header()
+        header = GT3Header()
         qq = deque('', maxlen=10)
 
         ## one string
         x = "x1" 
-        self.header.add_attribs(memo=x)
+        header.add_attribs(memo=x)
         qq.append(x)
-        self.assertSequenceEqual(self.header.memo, qq)
+        self.assertSequenceEqual(header.memo, qq)
         ## tuple
         x = ("x2", "x3", "x4", "x5")  
-        self.header.add_attribs(memo=x)
+        header.add_attribs(memo=x)
         qq.extend(x)
-        self.assertSequenceEqual(self.header.memo, qq)
+        self.assertSequenceEqual(header.memo, qq)
         ## list, over queue size
         x = ["x6", "x7", "x8", "x9", "xA", "xB", "xC"]
-        self.header.add_attribs(memo=x)
+        header.add_attribs(memo=x)
         qq.extend(x)
-        self.assertSequenceEqual(self.header.memo, qq)
-        # print(list(self.header.memo))
+        self.assertSequenceEqual(header.memo, qq)
+        # print(list(header.memo))
+
+
+    def test_date_00(self):
+        """ test behavior of date. """
+        t = (2018, 6, 19, 10, 16, 23)
+        h = GT3Header(date = "%04d%02d%02d %02d%02d%02d" % t)
+        # print(h.date)
+        # print(datetime(*t))
+        self.assertTrue(isinstance(h.date, datetime))
+        self.assertEqual(h.date, datetime(*t))
 
 ######################################################################
 class GT3File:
