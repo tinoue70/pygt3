@@ -31,6 +31,9 @@ parser.add_argument(
 #     '-H', '--header', help='Show header only.',
 #     action='store_true')
 parser.add_argument(
+    '-c', '--contour', help='contour plot',
+    action='store_true')
+parser.add_argument(
     '-T', '--table', help='Show data table only.',
     action='store_true')
 parser.add_argument(
@@ -64,10 +67,13 @@ opt_show_table = a.table
 opt_debug = a.debug
 opt_verbose = a.verbose
 
+opt_contour = a.contour
+
 if (opt_debug):
     opt_verbose = True
 
 if (opt_debug):
+    print("dbg:opt_contour:", opt_contour)
     print("dbg:opt_show_table:", opt_show_table)
     print("dbg:opt_data_number:", opt_data_number)
     print("dbg:opt_vert_level:", opt_vert_level)
@@ -156,8 +162,13 @@ if (opt_debug):
 # ax = plt.axes(projection=ccrs.Mollweide())
 # ax = plt.axes(projection=ccrs.NorthPolarStereo())
 ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180.0))
-img = ax.contourf(xax.data, yax.data, target_data[opt_vert_level, :, :], 60,
-                  transform=ccrs.PlateCarree())
+
+if (opt_contour):
+    img = ax.contour(xax.data, yax.data, target_data[opt_vert_level, :, :], 10,
+                     transform=ccrs.PlateCarree())
+else:
+    img = ax.contourf(xax.data, yax.data, target_data[opt_vert_level, :, :], 60,
+                      transform=ccrs.PlateCarree())
 
 ax.axis("image")
 title = "%s:%s[%s] lvl=%d" % (
