@@ -14,9 +14,9 @@ class A:
     """ base class for argparse,"""
     pass
 
-################################################################################
+###############################################################################
 # Here We Go
-################################################################################
+###############################################################################
 
 
 parser = argparse.ArgumentParser(description='Plot one data in gt3file')
@@ -55,7 +55,10 @@ file = a.file
 
 opt_data_number = a.number
 opt_vert_level = a.level
-opt_axdir = a.axdir.split(':')
+if (a.axdir is not None):
+    opt_axdir = a.axdir.split(':')
+else:
+    opt_axdir = None
 
 opt_show_table = a.table
 opt_debug = a.debug
@@ -87,9 +90,9 @@ if (opt_data_number not in range(f.num_of_data)):
           % (opt_data_number, f.num_of_data))
     sys.exit(1)
 
-################################################################################
+###############################################################################
 # Extract target data
-################################################################################
+###############################################################################
 
 target_header = None
 target_data = None
@@ -119,18 +122,16 @@ if (opt_debug):
     print("* size:", target_data.size)
     print("* itemsize:", target_data.itemsize)
     print("* ndim:", target_data.ndim)
-    print("* shape:",target_data.shape)
-
-
+    print("* shape:", target_data.shape)
 
 if (opt_vert_level not in range(target_data.shape[0])):
     print('Error: vertical level out of range: %d is not in range(%d)'
           % (opt_vert_level, target_data.shape[0]))
     sys.exit(1)
 
-################################################################################
+###############################################################################
 # Prepare axis data
-################################################################################
+###############################################################################
 
 xax = GT3Axis(target_header.aitm1, opt_axdir)
 if (xax.file is None):
@@ -144,9 +145,9 @@ if (yax.file is None):
 if (opt_debug):
     yax.dump()
 
-################################################################################
+###############################################################################
 # Start plotting
-################################################################################
+###############################################################################
 if (opt_debug):
     print("dbg: target_data.shape:", target_data.shape)
     print("dbg: xax.data.shape:", xax.data.shape)
@@ -159,7 +160,8 @@ img = ax.contourf(xax.data, yax.data, target_data[opt_vert_level, :, :], 60,
                   transform=ccrs.PlateCarree())
 
 ax.axis("image")
-title = "%s:%s[%s]" % (target_header.item, target_header.titl, target_header.unit)
+title = "%s:%s[%s]" % (
+    target_header.item, target_header.titl, target_header.unit)
 ax.set(title=title)
 ax.coastlines()
 
