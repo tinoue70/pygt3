@@ -895,12 +895,7 @@ class GT3File:
         self.is_after_header = False
         return None
 
-    def dump_current_header(self):
-        self.current_header.dump()
-        return None
-
-    def dump_current_data(self, file=None, xidx=None, yidx=None, zidx=None, **kwargs):
-        np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
+    def select_data_range(self, xidx=None, yidx=None, zidx=None):
         print('dbg:', xidx, yidx, zidx)
         d = self.current_data
 
@@ -916,6 +911,16 @@ class GT3File:
             d = d[zidx[0]:zidx[1], :, :]
         elif (isinstance(zidx, int)):
             d = d[zidx:zidx+1, :, :]
+        return d
+
+    def dump_current_header(self):
+        self.current_header.dump()
+        return None
+
+    def dump_current_data(self, file=None, xidx=None, yidx=None, zidx=None, **kwargs):
+        np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
+
+        d = self.select_data_range(xidx, yidx, zidx)
 
         liner = '====== %s: data #%d ' \
                 % (self.name, self.current_header.number)
@@ -927,6 +932,9 @@ class GT3File:
             print("  dtype:", d.dtype, file=file)
             print("  size,itemsize:",
                   d.size, d.itemsize, file=file)
+            print("  xrange:", xidx, file=file)
+            print("  yrange:", yidx, file=file)
+            print("  zrange:", zidx, file=file)
             print("  ndim, shape, strides:",
                   d.ndim, d.shape,
                   d.strides, file=file)
