@@ -30,6 +30,17 @@ parser.add_argument(
     '-d', '--debug', help='debug output',
     action='store_true')
 
+parser.add_argument(
+    '-x', '--xidx', help='slice at X-direction.',
+    type=int, nargs='+', default=None)
+parser.add_argument(
+    '-y', '--yidx', nargs='+', help='slice at Y-direction.',
+    type=int, default=None)
+parser.add_argument(
+    '-z', '--zidx', nargs='+', help='slice at Z-direction.',
+    type=int, default=None)
+
+    
 a = A()
 parser.parse_args(namespace=a)
 
@@ -46,11 +57,38 @@ opt_header_only = a.header
 opt_show_table = a.table
 opt_debug = a.debug
 
+if (a.xidx is None):
+    opt_xidx = None
+else:
+    if (len(a.xidx) == 1):
+        opt_xidx = a.xidx[0]
+    else:
+        opt_xidx = tuple(a.xidx[:2])  # should be sorted after sliced?
+
+if (a.yidx is None):
+    opt_yidx = None
+else:
+    if (len(a.yidx) == 1):
+        opt_yidx = a.yidx[0]
+    else:
+        opt_yidx = tuple(a.yidx[:2])  # should be sorted after sliced?
+if (a.zidx is None):
+    opt_zidx = None
+else:
+    if (len(a.zidx) == 1):
+        opt_zidx = a.zidx[0]
+    else:
+        opt_zidx = tuple(a.zidx[:2])  # should be sorted after sliced?
+
 if (opt_debug):
     print("dbg:opt_header_only:", opt_header_only)
     print("dbg:opt_show_table:", opt_show_table)
     print("dbg:opt_numbers:", opt_numbers)
+    print("dbg:opt_xidx:", opt_xidx)
+    print("dbg:opt_yidx:", opt_yidx)
+    print("dbg:opt_zidx:", opt_zidx)
     print("dbg:file:", file)
+
 
 f = GT3File(file)
 f.opt_debug = opt_debug
@@ -72,7 +110,7 @@ while True:
     else:
         if (opt_all or f.current_header.number in opt_numbers):
             f.read_one_data()
-            f.dump_current_data()
+            f.dump_current_data(xidx=opt_xidx, yidx=opt_yidx, zidx=opt_zidx)
         else:
             f.skip_one_data()
 

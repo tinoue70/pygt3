@@ -899,27 +899,42 @@ class GT3File:
         self.current_header.dump()
         return None
 
-    def dump_current_data(self, **kwargs):
-        np.set_printoptions(threshold=np.inf, linewidth=110, suppress=True)
+    def dump_current_data(self, file=None, xidx=None, yidx=None, zidx=None, **kwargs):
+        np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
+        print('dbg:', xidx, yidx, zidx)
+        d = self.current_data
+
+        if (isinstance(xidx, list) or isinstance(xidx, tuple)):
+            d = d[:, :, xidx[0]:xidx[1]]
+        elif (isinstance(xidx, int)):
+            d = d[:, :, xidx:xidx+1]
+        if (isinstance(yidx, list) or isinstance(yidx, tuple)):
+            d = d[:, yidx[0]:yidx[1], :]
+        elif (isinstance(yidx, int)):
+            d = d[:, yidx:yidx+1, :]
+        if (isinstance(zidx, list) or isinstance(zidx, tuple)):
+            d = d[zidx[0]:zidx[1], :, :]
+        elif (isinstance(zidx, int)):
+            d = d[zidx:zidx+1, :, :]
 
         liner = '====== %s: data #%d ' \
                 % (self.name, self.current_header.number)
         liner += "="*(80-len(liner))
         if (self.opt_debug):
-            print("dbg:current_data:")
-            print("  flags:")
-            print(self.current_data.flags)
-            print("  dtype:", self.current_data.dtype)
+            print("dbg:current_data:", file=file)
+            print("  flags:", file=file)
+            print(d.flags, file=file)
+            print("  dtype:", d.dtype, file=file)
             print("  size,itemsize:",
-                  self.current_data.size, self.current_data.itemsize)
+                  d.size, d.itemsize, file=file)
             print("  ndim, shape, strides:",
-                  self.current_data.ndim, self.current_data.shape,
-                  self.current_data.strides)
+                  d.ndim, d.shape,
+                  d.strides, file=file)
         print(liner)
         if (len(kwargs) > 0):
             np.set_printoptions(**kwargs)
-        print(self.current_data)
-        print('='*len(liner))
+        print(d, file=file)
+        print('='*len(liner), file=file)
 
         return None
 
@@ -1148,16 +1163,16 @@ class GT3Axis():
 
         pass
 
-    def dump(self):
+    def dump(self, file=None):
         liner = '='*6 + ' Axis: %s ' % self.name
         liner += '='*(80-len(liner))
-        print(liner)
-        print("path:", self.file)
-        print("title:", self.title)
-        print("size:", self.size)
-        print("data:")
-        print(self.data)
-        print('='*len(liner))
+        print(liner, file=file)
+        print("path:", self.file, file=file)
+        print("title:", self.title, file=file)
+        print("size:", self.size, file=file)
+        print("data:", file=file)
+        print(self.data, file=file)
+        print('='*len(liner), file=file)
         pass
 
 ###############################################################################
