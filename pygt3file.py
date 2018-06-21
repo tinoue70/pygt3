@@ -826,36 +826,39 @@ class GT3File:
             packed_bit_width = int(self.current_header.dfmt[3:])
             ijnum = self.current_header.isize * self.current_header.jsize
             knum = self.current_header.ksize
+            imiss = (1<<packed_bit_width) -1
 
             # coeffs[*,0] is the offset values,
             # coeffs[*,1] is the scale values.
             dt = np.dtype([
-                ("head", ">i4"),
-                ("data", ">f8", knum*2),
-                ("tail", ">i4")])
+                ("h", ">i4"),
+                ("b", ">f8", knum*2),
+                ("t", ">i4")])
             chunk = np.fromfile(self.f, dtype=dt, count=1)
-            if (chunk["head"] != chunk["tail"]):
+            if (chunk["h"] != chunk["t"]):
                 raise IOError
-            coeffs = chunk["data"][0].reshape(knum, 2)
+            coeffs = chunk["b"][0].reshape(knum, 2)
 
             ijnum_packed = BitPacker.calc_packed_length(
                 ijnum, packed_bit_width)
             dt = np.dtype([
-                ("head", ">i4"),
-                ("data", ">i4", ijnum_packed*knum),
-                ("tail", ">i4")])
+                ("h", ">i4"),
+                ("b", ">i4", ijnum_packed*knum),
+                ("t", ">i4")])
             chunk = np.fromfile(self.f, dtype=dt, count=1)
-            if (chunk["head"] != chunk["tail"]):
+            if (chunk["h"] != chunk["t"]):
                 raise IOError
-            packed = chunk["data"][0].reshape(knum, ijnum_packed)
-
+            packed = chunk["b"][0].reshape(knum, ijnum_packed)
+            self.current_data = np.ndarray(shape=(knum, ijnum), dtype="f8")
             for k in range(knum):
                 unpacked = BitPacker.unpack(
                     packed[k, :], packed_bit_width, ijnum)
-                self.current_data = np.ndarray(
-                    shape=(knum, ijnum), dtype="float64")
-                self.current_data[k, :] = (coeffs[k, 0]
-                                           + unpacked[:] * coeffs[k, 1])
+                for i in range(ijnum):
+                    if (unpacked[i] == imiss):
+                        self.current_data[k, i] = self.current_header.miss
+                    else:
+                        self.current_data[k, i] = (coeffs[k, 0]
+                                           + unpacked[i] * coeffs[k, 1])
             self.current_data = self.current_data.reshape(
                 self.current_header.shape)
         elif (self.current_header.dfmt[:3] == 'MRY'):
