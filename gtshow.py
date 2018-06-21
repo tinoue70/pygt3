@@ -11,7 +11,18 @@ class A:
     pass
 
 
-parser = argparse.ArgumentParser(description='Show contents of gt3file.')
+description='Show contents of gt3file.'
+
+epilog="""
+Index range must be single integer to be sliced at, or two integers to
+be a range.  Note that these are treated as a Python manner, that is,
+starts from zero and second index is excluded.
+"""
+
+parser = argparse.ArgumentParser(
+    description=description,
+    epilog=epilog)
+
 
 parser.add_argument(
     '-H', '--header', help='Show header only.',
@@ -23,6 +34,10 @@ parser.add_argument(
     'file', help='file name.')
 
 parser.add_argument(
+    '-i', '--indexed', help='Show data with grid indices',
+    action='store_true', default=False)
+
+parser.add_argument(
     '-n', '--numbers', help='Space separated data number(s) to be shown.',
     type=int, nargs='*')
 
@@ -31,13 +46,13 @@ parser.add_argument(
     action='store_true')
 
 parser.add_argument(
-    '-x', '--xidx', help='slice at X-direction.',
+    '-x', '--xidx', help='index range X-direction.',
     type=int, nargs='+', default=None)
 parser.add_argument(
-    '-y', '--yidx', nargs='+', help='slice at Y-direction.',
+    '-y', '--yidx', nargs='+', help='index range Y-direction.',
     type=int, default=None)
 parser.add_argument(
-    '-z', '--zidx', nargs='+', help='slice at Z-direction.',
+    '-z', '--zidx', nargs='+', help='index range Z-direction.',
     type=int, default=None)
 
     
@@ -55,6 +70,7 @@ else:
 
 opt_header_only = a.header
 opt_show_table = a.table
+opt_indexed = a.indexed
 opt_debug = a.debug
 
 if (a.xidx is None):
@@ -81,13 +97,15 @@ else:
         opt_zidx = tuple(a.zidx[:2])  # should be sorted after sliced?
 
 if (opt_debug):
-    print("dbg:opt_header_only:", opt_header_only)
-    print("dbg:opt_show_table:", opt_show_table)
-    print("dbg:opt_numbers:", opt_numbers)
-    print("dbg:opt_xidx:", opt_xidx)
-    print("dbg:opt_yidx:", opt_yidx)
-    print("dbg:opt_zidx:", opt_zidx)
-    print("dbg:file:", file)
+    print("====== Options ======")
+    print("  opt_header_only:", opt_header_only)
+    print("  opt_show_table:", opt_show_table)
+    print("  opt_indexed", opt_indexed)
+    print("  opt_numbers:", opt_numbers)
+    print("  opt_xidx:", opt_xidx)
+    print("  opt_yidx:", opt_yidx)
+    print("  opt_zidx:", opt_zidx)
+    print("  file:", file)
 
 
 f = GT3File(file)
@@ -110,7 +128,8 @@ while True:
     else:
         if (opt_all or f.current_header.number in opt_numbers):
             f.read_one_data()
-            f.dump_current_data(xidx=opt_xidx, yidx=opt_yidx, zidx=opt_zidx)
+            f.dump_current_data(xidx=opt_xidx, yidx=opt_yidx, zidx=opt_zidx,
+                                indexed=opt_indexed)
         else:
             f.skip_one_data()
 
