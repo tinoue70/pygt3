@@ -151,34 +151,47 @@ if (yax.file is None):
 if (opt_debug):
     yax.dump()
 
+zax = GT3Axis(target_header.aitm3, opt_axdir)
+if (zax.file is None):
+    sys.exit(1)
+if (opt_debug):
+    zax.dump()
+
+zlevel = zax.data[opt_vert_level]
+
 ###############################################################################
 # Start plotting
 ###############################################################################
-if (opt_debug):
-    print("dbg: target_data.shape:", target_data.shape)
-    print("dbg: xax.data.shape:", xax.data.shape)
-    print("dbg: yax.data.shape:", yax.data.shape)
 
+# if (opt_debug):
+#     print("dbg: target_data.shape:", target_data.shape)
+#     print("dbg: xax.data.shape:", xax.data.shape)
+#     print("dbg: yax.data.shape:", yax.data.shape)
+
+# 1D plot
+# fig = plt.figure
+# ax = plt.axes()
+# plt.plot(yax.data,target_data[opt_vert_level, :, 1])
+# plt.show()
+
+# 2D plot
 # ax = plt.axes(projection=ccrs.Mollweide())
 # ax = plt.axes(projection=ccrs.NorthPolarStereo())
 ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180.0))
-
 if (opt_contour):
-    img = ax.contour(xax.data, yax.data, target_data[opt_vert_level, :, :], 10,
-                     transform=ccrs.PlateCarree())
+    img = ax.contour(xax.data, yax.data, target_data[opt_vert_level, :, :],
+                     10, transform=ccrs.PlateCarree())
 else:
-    img = ax.contourf(xax.data, yax.data, target_data[opt_vert_level, :, :], 60,
-                      transform=ccrs.PlateCarree())
-
+    img = ax.contourf(xax.data, yax.data, target_data[opt_vert_level, :, :],
+                      60, transform=ccrs.PlateCarree())
 ax.axis("image")
-title = "%s:%s[%s] lvl=%d" % (
+title = "%s:%s[%s] lvl=%g[%s]" % (
     target_header.item, target_header.titl, target_header.unit,
-    opt_vert_level
-)
+    zax.data[opt_vert_level], zax.header.unit)
 ax.set(title=title)
 ax.coastlines()
-
 plt.colorbar(img, ax=ax, orientation="horizontal", extend="both")
 plt.show()
-
+# done
+f.close()
 sys.exit(0)
