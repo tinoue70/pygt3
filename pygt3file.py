@@ -855,7 +855,8 @@ class GT3File:
                     packed[k, :], packed_bit_width, ijnum)
                 for i in range(ijnum):
                     if (unpacked[i] == imiss):
-                        self.current_data[k, i] = self.current_header.miss
+                        # self.current_data[k, i] = self.current_header.miss
+                        self.current_data[k, i] = np.nan
                     else:
                         self.current_data[k, i] = (coeffs[k, 0]
                                            + unpacked[i] * coeffs[k, 1])
