@@ -895,7 +895,7 @@ class GT3File:
         self.is_after_header = False
         return None
 
-    def select_data_range(self, xidx=None, yidx=None, zidx=None):
+    def select_data_range(self, xidx=(), yidx=(), zidx=()):
         """
         Select data index range from current_data and return it.
 
@@ -904,31 +904,26 @@ class GT3File:
         """
         # print('dbg:', xidx, yidx, zidx)
         d = self.current_data
+        if (len(xidx) == 0):
+            xidx = [0, d.shape[2]]
+        if (len(yidx) == 0):
+            yidx = [0, d.shape[1]]
+        if (len(zidx) == 0):
+            zidx = [0, d.shape[0]]
 
-        if (isinstance(xidx, list) or isinstance(xidx, tuple)):
-            d = d[:, :, xidx[0]:xidx[1]]
-        elif (isinstance(xidx, int)):
-            d = d[:, :, xidx:xidx+1]
-        if (isinstance(yidx, list) or isinstance(yidx, tuple)):
-            d = d[:, yidx[0]:yidx[1], :]
-        elif (isinstance(yidx, int)):
-            d = d[:, yidx:yidx+1, :]
-        if (isinstance(zidx, list) or isinstance(zidx, tuple)):
-            d = d[zidx[0]:zidx[1], :, :]
-        elif (isinstance(zidx, int)):
-            d = d[zidx:zidx+1, :, :]
-        return d
+        d = d[zidx[0]:zidx[1], yidx[0]:yidx[1], xidx[0]:xidx[1]]
+        return xidx, yidx, zidx, d
 
     def dump_current_header(self):
         self.current_header.dump()
         return None
 
     def dump_current_data(self, file=None,
-                          xidx=None, yidx=None, zidx=None,
+                          xidx=(), yidx=(), zidx=(),
                           indexed=False, **kwargs):
         np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
 
-        d = self.select_data_range(xidx, yidx, zidx)
+        xidx, yidx, zidx, d = self.select_data_range(xidx, yidx, zidx)
 
         liner = '====== %s: data #%d ' \
                 % (self.name, self.current_header.number)
@@ -949,31 +944,14 @@ class GT3File:
         print(liner)
         if (len(kwargs) > 0):
             np.set_printoptions(**kwargs)
+
         if (indexed):
-            if (isinstance(xidx, list) or isinstance(xidx, tuple)):
-                xrange = (xidx[0], xidx[1])
-            elif (isinstance(xidx, int)):
-                xrange = (xidx, xidx+1)
-            else:
-                xrange = (0, d.shape[2])
-            if (isinstance(yidx, list) or isinstance(yidx, tuple)):
-                yrange = (yidx[0], yidx[1])
-            elif (isinstance(yidx, int)):
-                yrange = (yidx, yidx+1)
-            else:
-                yrange = (0, d.shape[1])
-            if (isinstance(zidx, list) or isinstance(zidx, tuple)):
-                zrange = (zidx[0], zidx[1])
-            elif (isinstance(zidx, int)):
-                zrange = (zidx, zidx+1)
-            else:
-                zrange = (0, d.shape[0])
             print("#%8s %8s %8s %20s" % ("xindex", "yindex", "zindex", "data"),
                   file=file)
-            for k in range(*zrange):
-                for j in range(*yrange):
-                    for i in range(*xrange):
-                        print(" %8d %8d %8d %20f" % (i, j, k, d[k, j, i]),
+            for k in range(zidx[1]-zidx[0]):
+                for j in range(yidx[1]-yidx[0]):
+                    for i in range(xidx[1]-xidx[0]):
+                        print(" %8d %8d %8d %20f" % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]),
                               file=file)
         else:
             print(d, file=file)
