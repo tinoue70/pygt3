@@ -255,10 +255,13 @@ class GT3Header:
             try:
                 self.date = datetime.strptime(date, "%Y%m%d %H%M%S")
             except ValueError:
-                if (date[:4] == '0000'):
-                    self.date = None
-                else:
-                    raise ValueError
+                print('Warn: Invalid date attribute %s in %s, set None:' %
+                      (date, self.item))
+                self.date = None
+                # if (date[:4] == '0000'):
+                #     self.date = None
+                # else:
+                #     raise ValueError
         self.tdur = int(hdarray[27])
         self.aitm1 = hdarray[28].strip().decode('UTF-8')
         self.astr1 = int(hdarray[29])
