@@ -31,7 +31,7 @@ f.write_one_data()
 
 for i in range(11):
     time = time + deltaT
-    date = date + timedelta(hours=1)
+    date = date + timedelta(hours=deltaT)
     f.current_header.date = date
     f.current_header.time = time
 
