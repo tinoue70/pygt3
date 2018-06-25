@@ -743,12 +743,22 @@ class GT3File:
             self.num_of_data += 1
             tbl.append([self.current_header.item,
                         self.current_header.time,
-                        self.current_header.dfmt])
+                        self.current_header.dfmt,
+                        self.current_header.tdur,
+                        self.current_header.date,
+                        self.current_header.aitm1,
+                        self.current_header.aitm2,
+                        self.current_header.aitm3            ])
         self.rewind()
         self.table = pd.DataFrame(tbl)
         self.table.columns = ['item',
                               'time',
-                              'dfmt']
+                              'dfmt',
+                              'tdur',
+                              'date',
+                              'aitm1',
+                              'aitm2',
+                              'aitm3']
         self.num_of_times = self.table.pivot_table(
             index='time', aggfunc=[len]).shape[0]
         self.num_of_items = self.table.pivot_table(
