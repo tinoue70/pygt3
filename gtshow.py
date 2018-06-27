@@ -5,72 +5,125 @@ from pygt3file import GT3File
 import argparse
 import sys
 
+
 class A:
     """ base class for argparse,"""
     pass
 
 
-parser = argparse.ArgumentParser(description='Show contents of gt3file.')
+def set_idx_range(idx):
+    if (idx is None):
+        idx = ()
+    if (len(idx) == 0):
+        pass
+    elif (len(idx) == 1):
+        idx.append(idx[0]+1)
+    else:
+        idx = idx[:2]
+        idx.sort()
+    return idx
 
-parser.add_argument(
-    '-H', '--header', help='Show header only.',
-    action='store_true')
-parser.add_argument(
-    '-T', '--table', help='Show data table only.',
-    action='store_true')
-parser.add_argument(
-    'file', help='file name.')
 
-parser.add_argument(
-    '-n', '--numbers', help='Space separated data number(s) to be shown.',
-    type=int, nargs='*')
+description = 'Show contents of gt3file.'
+
+epilog = """
+Index range must be single integer to be sliced at, or two integers to
+be a range.  Note that these are treated as a slice object, that is,
+`-x 1` shows data[:,:,1], but `-x 0 1` shows data[:,:,0:1] so data[:,:,1]
+is excluded. But NEVER use negative index.
+"""
+
+###############################################################################
+# Here we go
+###############################################################################
+parser = argparse.ArgumentParser(
+    description=description,
+    epilog=epilog)
 
 parser.add_argument(
     '-d', '--debug', help='debug output',
     action='store_true')
+parser.add_argument(
+    '-v', '--verbose', help='verbose output',
+    action='store_true')
 
-a = A()
-parser.parse_args(namespace=a)
+parser.add_argument(
+    'file', help='gt3 file name.')
 
-file = a.file
+# How to show
+parser.add_argument(
+    '-H', '--header_only', help='Show header only.',
+    action='store_true')
+parser.add_argument(
+    '-T', '--show_table', help='Show data table only.',
+    action='store_true')
+parser.add_argument(
+    '-i', '--indexed', help='Show data with grid indices',
+    action='store_true', default=False)
 
-if (a.numbers is None):
-    opt_numbers = ()
-    opt_all = True
-else:
-    opt_numbers = tuple(a.numbers)
-    opt_all = False
+# What to show
+parser.add_argument(
+    '-n', '--numbers', help='Space separated data number(s) to be shown.',
+    type=int, nargs='+', default=())
+parser.add_argument(
+    '-x', '--xidx', help='index range X-direction.',
+    type=int, nargs='+', default=())
+parser.add_argument(
+    '-y', '--yidx', help='index range Y-direction.',
+    type=int, nargs='+', default=())
+parser.add_argument(
+    '-z', '--zidx', help='index range Z-direction.',
+    type=int, nargs='+', default=())
 
-opt_header_only = a.header
-opt_show_table = a.table
-opt_debug = a.debug
 
-if (opt_debug):
-    print("dbg:opt_header_only:", opt_header_only)
-    print("dbg:opt_show_table:", opt_show_table)
-    print("dbg:opt_numbers:",opt_numbers)
-    print("dbg:file:", file)
+opt = A()
+parser.parse_args(namespace=opt)
 
-f = GT3File(file)
-f.opt_debug = opt_debug
-f.scan()
+opt.all = (len(opt.numbers) == 0)
 
-if (opt_show_table):
-    f.show_table()
-    sys.exit(0)
+opt.xidx = set_idx_range(opt.xidx)
+opt.yidx = set_idx_range(opt.yidx)
+opt.zidx = set_idx_range(opt.zidx)
 
-while True:
-    f.read_one_header()
-    if (f.is_eof):
-        break
-    if (opt_all or f.current_header.number in opt_numbers):
-        f.dump_current_header()
 
-    if (opt_header_only):
-        f.skip_one_data()
-    else:
-        if (opt_all or f.current_header.number in opt_numbers):
-            f.read_one_data()
-            f.dump_current_data()
-        else:
+if (opt.debug):
+    print("====== Options ======")
+    print("  opt.header_only:", opt.header_only)
+    print("  opt.show_table:", opt.show_table)
+    print("  opt.indexed", opt.indexed)
+    print("  opt.numbers:", opt.numbers)
+    print("  opt.xidx:", opt.xidx)
+    print("  opt.yidx:", opt.yidx)
+    print("  opt.zidx:", opt.zidx)
+    print("  file:", opt.file)
+
+
+with GT3File(opt.file) as f:
+    f.opt_debug = opt.debug
+    f.opt_verbose = opt.verbose
+    f.scan()
+
+    if (opt.show_table):
+        f.show_table()
+        sys.exit(0)
+
+    while True:
+        f.read_one_header()
+        if (f.is_eof):
+            break
+        if (opt.all or f.current_header.number in opt.numbers):
+            f.dump_current_header()
+
+        if (opt.header_only):
             f.skip_one_data()
+        else:
+            if (opt.all or f.current_header.number in opt.numbers):
+                f.read_one_data()
+                f.dump_current_data(xidx=opt.xidx,
+                                    yidx=opt.yidx,
+                                    zidx=opt.zidx,
+                                    indexed=opt.indexed)
+            else:
+                f.skip_one_data()
+
+sys.exit(0)
