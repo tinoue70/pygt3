@@ -42,6 +42,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument(
     '-d', '--debug', help='debug output',
     action='store_true')
+parser.add_argument(
+    '-v', '--verbose', help='verbose output',
+    action='store_true')
 
 parser.add_argument(
     'file', help='gt3 file name.')
@@ -96,6 +99,7 @@ if (opt.debug):
 
 f = GT3File(opt.file)
 f.opt_debug = opt.debug
+f.opt_verbose = opt.verbose
 f.scan()
 
 if (opt.show_table):

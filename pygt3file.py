@@ -9,7 +9,7 @@ import sys
 import unittest
 import tempfile
 from collections import deque
-from datetime import datetime
+# from datetime import datetime
 
 
 class Error(Exception):
@@ -154,8 +154,8 @@ class GT3Header:
     """
 
     def __init__(self,
-                 dset='', item='', title='', unit='', date='', utim='',
-                 time=0, tdur=0,
+                 dset='', item='', title='', unit='', date=None, utim='sec',
+                 time=None, tdur=0,
                  aitm1='', astr1=0, aend1=0,
                  aitm2='', astr2=0, aend2=0,
                  aitm3='', astr3=0, aend3=0,
@@ -179,17 +179,10 @@ class GT3Header:
         self.dnum = dnum
         self.titl = title
         self.unit = unit
-        self.time = int(time)
-        if (isinstance(date, str)):
-            if (len(date) == 0):
-                self.date = None
-            else:
-                self.date = datetime.strptime(date, "%Y%m%d %H%M%S")
-        elif (isinstance(date, datetime)):
-            self.date = date
-        else:
-            raise InvalidArgumentError("date is invalid:", date)
         self.utim = utim
+        self.date = None
+        self.time = None
+        self.set_time_date(date, time)
         self.tdur = int(tdur)
         self.aitm1 = aitm1
         self.astr1 = int(astr1)
@@ -212,7 +205,7 @@ class GT3Header:
         self.roptn = 0.
         # self.time2 = time
         # self.utim2 = date
-        self.cdate = "{0:%Y%m%d %H%M%S}".format(datetime.now())
+        self.cdate = "{0:%Y%m%d %H%M%S}".format(pd.Timestamp.now())
         self.csign = 'pygt3 library'
         self.mdate = self.cdate
         self.msign = 'pygt3 library'
@@ -222,6 +215,68 @@ class GT3Header:
         self.set_hidden_attribs()
 
         pass
+
+    def set_time_date(self, date=None, time=None, utim=None):
+        """
+        Set and keep `date`,`time` and `utim` attributes consistently.
+
+        `date` must be:
+        - 'compact' : 'YYYYMMDD HHMMSS' that is used in GTOOL3 header array,
+        - 'standard': 'YYYY-MM-DD HH-MM-SS' or acceptable by np.datetime64(),
+        - np.datetime64 instance.
+
+        According to the GTOOL3 specification, `time` field is counted
+        from '0000/01/01 00:00:00', so we use np.datetime64 here.
+
+
+        If date is given, convert it to time, and vice versa, then set to self.
+        If both is given, time is discarded even if not None.
+        """
+
+        if (date is None and time is None):
+            return None
+        if (date is not None and time is not None):
+            raise InvalidArgumentError()
+
+        if (utim is None):
+            utim = self.utim
+        if (utim is None):
+            utim = 'sec'
+        self.utim = utim
+
+        if (utim[0].upper() == 'Y'):
+            unit = 'Y'
+        elif (utim[:2].upper() == 'MO'):
+            unit = 'M'
+        elif (utim[0].upper() == 'D'):
+            unit = 'D'
+        elif (utim[0].lower() == 'h'):
+            unit = 'h'
+        elif (utim[0].lower() == 'm'):  # 'minutes' or 'mn'
+            unit = 'm'
+        elif (utim[0].lower() == 's'):
+            unit = 's'
+        else:
+            raise InvalidArgumentError(utim)
+
+        orig = np.datetime64('0000-01-01', unit)
+
+        if (date is not None):  # date -> time
+            if (isinstance(date, str)):
+                if (len(date.strip()) == 15 and date[8] == ' '):
+                    # seems compact form
+                    date = date[0:4] + '-' + date[4:6] + '-' \
+                           + date[6:8] + ' ' + date[9:11] + ':' \
+                           + date[11:13] + ':' + date[13:15]
+                else:
+                    pass
+            self.date = np.datetime64(date, unit)
+            self.time = self.date - orig
+        else:  # time -> date
+            self.time = np.timedelta64(time, unit)
+            self.date = time + orig
+
+        return None
 
     def set_from_hdarray(self, hdarray, fname=None):
         """
@@ -238,30 +293,16 @@ class GT3Header:
         if (fnum == ''):
             self.fnum = None
         else:
-            self.fnum = fnum
+            self.fnum = int(fnum)
         dnum = hdarray[12].strip().decode('UTF-8')
         if (dnum == ''):
             self.dnum = None
         else:
-            self.dnum = dnum
+            self.dnum = int(dnum)
         self.titl = (hdarray[13]+hdarray[14]).strip().decode('UTF-8')
         self.unit = hdarray[15].strip().decode('UTF-8')
-        self.time = int(hdarray[24])
         self.utim = hdarray[25].strip().decode('UTF-8')
-        date = hdarray[26].strip().decode('UTF-8')
-        if (len(date) == 0):
-            self.date = None
-        else:
-            try:
-                self.date = datetime.strptime(date, "%Y%m%d %H%M%S")
-            except ValueError:
-                print('Warn: Invalid date attribute %s in %s, set None:' %
-                      (date, self.item))
-                self.date = None
-                # if (date[:4] == '0000'):
-                #     self.date = None
-                # else:
-                #     raise ValueError
+        self.set_time_date(hdarray[26].strip().decode('UTF-8'))
         self.tdur = int(hdarray[27])
         self.aitm1 = hdarray[28].strip().decode('UTF-8')
         self.astr1 = int(hdarray[29])
@@ -387,8 +428,9 @@ class GT3Header:
             print("dset : %s" % str(self.dset), file=file)
             print("item : %s[%s]: %s"
                   % (self.item, self.unit, self.titl), file=file)
-            print("date : %s(%d) with %d[%s]" %
-                  (self.date, self.time, self.tdur, self.utim), file=file)
+            print("date : %s(%s) with %d[%s]" %
+                  (self.date, str(self.time).split()[0],
+                   self.tdur, self.utim), file=file)
             if (self.aitm3 != ''):
                 print("axis : %s[%d:%d] x %s[%d:%d] x %s[%d:%d]"
                       % (self.aitm1, self.astr1, self.aend1,
@@ -445,9 +487,11 @@ class GT3Header:
         for v in self.ettl:
             hdarray[16+i] = "%-16s" % v
             i += 1
-        hdarray[24] = "%16d" % self.time
+        hdarray[24] = "%16d" % int(str(self.time).split()[0])
         hdarray[25] = "%-16s" % self.utim
-        hdarray[26] = "%-16s" % self.date.strftime("%Y%m%d %H%M%S")
+        # np.datetime64 doesn't have strftime, use pd.Timestamp instead.
+        hdarray[26] = "%-16s" \
+                      % pd.to_datetime(self.date).strftime("%Y%m%d %H%M%S")
         hdarray[27] = "%16d" % self.tdur
         hdarray[28] = "%-16s" % self.aitm1
         hdarray[29] = "%16d" % self.astr1
@@ -500,7 +544,7 @@ class TestGT3Header(unittest.TestCase):
              b'               1', b'testdata for Tes', b'tGT3Header.pack(', b'-               ',
              b'etitle0         ', b'etitle1         ', b'etitle2         ', b'etitle3         ',
              b'etitle4         ', b'etitle5         ', b'etitle6         ', b'etitle7         ',
-             b'             399', b'HOUR            ', b'20180616 151200 ', b'               0',
+             b'          737226', b'DAYS            ', b'20180616 000000 ', b'               0',
              b'GLON64          ', b'               1', b'              64', b'GGLA32          ',
              b'               1', b'              32', b'SFC1            ', b'               1',
              b'               1', b'UR4             ', b'  -9.9900000e+02', b'  -9.9900000e+02',
@@ -523,7 +567,7 @@ class TestGT3Header(unittest.TestCase):
             "====== test: header #-1 ========================================================\n"
             "dset : \n"
             "item : []: \n"
-            "date : None(0) with 0[]\n"
+            "date : None(None) with 0[sec]\n"
             "axis : [0:0]\n"
             "cycl : False\n"
             "dfmt : UR4\n"
@@ -552,7 +596,7 @@ class TestGT3Header(unittest.TestCase):
             "====== test: header #-1 ========================================================\n"
             "dset : test\n"
             "item : hoge[-]: testdata for TestGT3Header.pack(\n"
-            "date : 2018-06-16 15:12:00(399) with 0[HOUR]\n"
+            "date : 2018-06-16(737226) with 0[DAYS]\n"
             "axis : GLON64[1:64] x GGLA32[1:32] x SFC1[1:1]\n"
             "cycl : False\n"
             "dfmt : UR4\n"
@@ -575,7 +619,7 @@ class TestGT3Header(unittest.TestCase):
                            edit=["edit%d" % n for n in range(3)],
                            fnum=1, dnum=1,
                            ettl=["etitle%d" % n for n in range(3)],
-                           time=16*24+15, date='20180616 151200', utim='HOUR',
+                           date='20180616 151200', utim='DAYS',
                            aitm1='GLON64', astr1=1, aend1=64,
                            aitm2='GGLA32', astr2=1, aend2=32,
                            aitm3='SFC1', astr3=1, aend3=1,
@@ -587,7 +631,7 @@ class TestGT3Header(unittest.TestCase):
              b'               1', b'testdata for Tes', b'tGT3Header.pack(', b'-               ',
              b'etitle0         ', b'etitle1         ', b'etitle2         ', b'                ',
              b'                ', b'                ', b'                ', b'                ',
-             b'             399', b'HOUR            ', b'20180616 151200 ', b'               0',
+             b'          737226', b'DAYS            ', b'20180616 000000 ', b'               0',
              b'GLON64          ', b'               1', b'              64', b'GGLA32          ',
              b'               1', b'              32', b'SFC1            ', b'               1',
              b'               1', b'UR4             ', b'  -9.9900000e+02', b'  -9.9900000e+02',
@@ -666,14 +710,60 @@ class TestGT3Header(unittest.TestCase):
         self.assertSequenceEqual(header.memo, qq)
         # print(list(header.memo))
 
-    def test_date_00(self):
-        """ test behavior of date. """
+    def test_set_time_date_00(self):
+        """ test set_time_date. """
         t = (2018, 6, 19, 10, 16, 23)
-        h = GT3Header(date="%04d%02d%02d %02d%02d%02d" % t)
-        # print(h.date)
-        # print(datetime(*t))
-        self.assertTrue(isinstance(h.date, datetime))
-        self.assertEqual(h.date, datetime(*t))
+        expect = {'date': np.datetime64('2018-06-19'),
+                  'time': np.timedelta64(737229, 'D')}
+
+        h = GT3Header(utim='days')
+        h.set_time_date(date="%04d%02d%02d %02d%02d%02d" % t)
+        self.assertEqual(h.date, expect['date'])
+        self.assertEqual(h.time, expect['time'])
+
+    def test_set_time_date_01(self):
+        """ test set_time_date. """
+        t = (2018, 6, 19, 10, 16, 23)
+        expect = {'date': np.datetime64('2018-06-19 10:16:23'),
+                  'time': np.timedelta64(63696622583, 's')}
+
+        h = GT3Header(utim='sec')
+        h.set_time_date(date="%04d%02d%02d %02d%02d%02d" % t)
+        self.assertEqual(h.date, expect['date'])
+        self.assertEqual(h.time, expect['time'])
+
+    def test_set_time_date_10(self):
+        """ test set_time_date. """
+        t = (2018, 6, 19, 10, 16, 23)
+        expect = {'date': np.datetime64('2018-06-19'),
+                  'time': np.timedelta64(737229, 'D')}
+
+        h = GT3Header(utim='days')
+        h.set_time_date(date="%04d-%02d-%02d %02d:%02d:%02d" % t)
+        self.assertEqual(h.date, expect['date'])
+        self.assertEqual(h.time, expect['time'])
+
+    def test_set_time_date_11(self):
+        """ test set_time_date. """
+        t = (2018, 6, 19, 10, 16, 23)
+        expect = {'date': np.datetime64('2018-06-19 10:16:23'),
+                  'time': np.timedelta64(63696622583, 's')}
+
+        h = GT3Header(utim='sec')
+        h.set_time_date(date="%04d-%02d-%02d %02d:%02d:%02d" % t)
+        self.assertEqual(h.date, expect['date'])
+        self.assertEqual(h.time, expect['time'])
+
+    def test_set_time_date_20(self):
+        """ test set_time_date. """
+        t = 63696622583  # sec
+        expect = {'date': np.datetime64('2018-06-19 10:16:23'),
+                  'time': np.timedelta64(63696622583, 's')}
+
+        h = GT3Header(utim='sec')
+        h.set_time_date(time=t)
+        self.assertEqual(h.date, expect['date'])
+        self.assertEqual(h.time, expect['time'])
 
 
 ######################################################################
@@ -742,13 +832,25 @@ class GT3File:
             self.skip_one_data()
             self.num_of_data += 1
             tbl.append([self.current_header.item,
-                        self.current_header.time,
-                        self.current_header.dfmt])
+                        int(str(self.current_header.time).split()[0]),
+                        self.current_header.tdur,
+                        self.current_header.utim,
+                        self.current_header.dfmt,
+                        self.current_header.date,
+                        self.current_header.aitm1,
+                        self.current_header.aitm2,
+                        self.current_header.aitm3])
         self.rewind()
         self.table = pd.DataFrame(tbl)
         self.table.columns = ['item',
                               'time',
-                              'dfmt']
+                              'tdur',
+                              'utim',
+                              'dfmt',
+                              'date',
+                              'aitm1',
+                              'aitm2',
+                              'aitm3']
         self.num_of_times = self.table.pivot_table(
             index='time', aggfunc=[len]).shape[0]
         self.num_of_items = self.table.pivot_table(
@@ -770,16 +872,15 @@ class GT3File:
         Show data table, created by scan().
         """
 
-        if (self.table is not None):
-            liner = "="*5 + " Data table: "
-            liner += "="*(80-len(liner))
-            print(liner, file=file)
-            print(self.table.to_string(), file=file)
-            print("="*len(liner), file=file)
-        else:
-            print("Data table is not created, use .scan() first.",
-                  file=sys.stderr)
-            sys.exit(1)
+        if (self.table is None):
+            self.scan()
+        liner = "="*5 + " Data table: "
+        liner += "="*(80-len(liner))
+        print(liner, file=file)
+        print(self.table.to_string(), file=file)
+        print("="*len(liner), file=file)
+
+        return None
 
     def read_one_header(self):
         """
@@ -787,12 +888,14 @@ class GT3File:
         """
 
         dt = np.dtype(
-            [("head", ">i4"), ("header", "a16", 64), ("tail", ">i4")])
+            [("h", ">i4"), ("b", "a16", 64), ("t", ">i4")])
 
         chunk = np.fromfile(self.f, dtype=dt, count=1)
         if (len(chunk)):
+            if (chunk["h"] != chunk["t"]):
+                raise IOError
             self.current_header.set_from_hdarray(
-                chunk["header"][0], self.name)
+                chunk["b"][0], self.name)
             self.current_header.number += 1
             self.is_eof = False
             self.is_after_header = True
@@ -805,24 +908,24 @@ class GT3File:
     def read_one_data(self):
         if (self.current_header.dfmt[:3] == 'UR8'):
             dt = np.dtype([
-                ("head", ">i4"),
-                ("data", ">f8", self.current_header.size),
-                ("tail", ">i4")])
+                ("h", ">i4"),
+                ("b", ">f8", self.current_header.size),
+                ("t", ">i4")])
             chunk = np.fromfile(self.f, dtype=dt, count=1)
-            if (chunk["head"] != chunk["tail"]):
+            if (chunk["h"] != chunk["t"]):
                 raise IOError
             self.current_data = np.array(
-                chunk["data"][0]).reshape(self.current_header.shape)
+                chunk["b"][0]).reshape(self.current_header.shape)
         elif (self.current_header.dfmt[:3] == 'UR4'):
             dt = np.dtype([
-                ("head", ">i4"),
-                ("data", ">f4", self.current_header.size),
-                ("tail", ">i4")])
+                ("h", ">i4"),
+                ("b", ">f4", self.current_header.size),
+                ("t", ">i4")])
             chunk = np.fromfile(self.f, dtype=dt, count=1)
-            if (chunk["head"] != chunk["tail"]):
+            if (chunk["h"] != chunk["t"]):
                 raise IOError
             self.current_data = np.array(
-                chunk["data"][0]).reshape(self.current_header.shape)
+                chunk["b"][0]).reshape(self.current_header.shape)
         elif (self.current_header.dfmt[:3] == 'URC'):
             raise NotImplementedError
         elif (self.current_header.dfmt[:3] == 'URY'):
@@ -954,7 +1057,8 @@ class GT3File:
             for k in range(zidx[1]-zidx[0]):
                 for j in range(yidx[1]-yidx[0]):
                     for i in range(xidx[1]-xidx[0]):
-                        print(" %8d %8d %8d %20f" % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]),
+                        print(" %8d %8d %8d %20f"
+                              % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]),
                               file=file)
         else:
             print(d, file=file)
@@ -997,13 +1101,13 @@ class GT3File:
         """
 
         dt = np.dtype([
-            ("head", ">i4"),
-            ("header", "a16", 64),
-            ("tail", ">i4")])
+            ("h", ">i4"),
+            ("b", "a16", 64),
+            ("t", ">i4")])
         chunk = np.empty((1,), dtype=dt)
-        chunk["head"] = 64*16
-        chunk["tail"] = chunk["head"]
-        chunk["header"] = self.current_header.pack()
+        chunk["h"] = 64*16
+        chunk["t"] = chunk["h"]
+        chunk["b"] = self.current_header.pack()
         chunk.tofile(self.f)
         self.if_after_header = True
 
@@ -1019,9 +1123,9 @@ class GT3File:
     def write_one_data(self):
         if (self.current_header.dfmt[:3] == 'UR4'):
             dt = np.dtype([
-                ("head", ">i4"),
-                ("body", ">f4", self.current_header.size),
-                ("tail", ">i4")])
+                ("h", ">i4"),
+                ("b", ">f4", self.current_header.size),
+                ("t", ">i4")])
             bytes = self.current_header.size*4
             pass
         elif (self.current_header.dfmt[:3] == 'UR8'):
@@ -1035,24 +1139,59 @@ class GT3File:
             raise NotImplementedError('Unknown dfmt: %s'
                                       % self.current_header.dfmt)
         chunk = np.empty((1,), dtype=dt)
-        chunk["head"] = bytes
-        chunk["tail"] = chunk["head"]
-        chunk["body"] = self.current_data.flatten()
+        chunk["h"] = bytes
+        chunk["t"] = chunk["h"]
+        chunk["b"] = self.current_data.flatten()
         chunk.tofile(self.f)
         self.if_after_header = False
+
+    def extract_t_axis(self):
+        """
+        Extract axis for time series.
+
+        self must
+        - have data tabel created by scan(),
+        - have num_of_times > 0 and num_of_items == 1, ie, one
+          variable in the file,
+
+        If num_of_items > 1, assumes all times have same and time
+        value(s).
+
+        Returns dict{"values","unit'}, and values is an ndarray of
+        `time`.
+        """
+        if (self.table is None):
+            self.scan()
+
+        if (self.num_of_times <= 0):
+            print('Warn: num_of_times is not positive: %d' % self.num_of_times)
+            result = None
+        elif (self.num_of_items > 1):
+            result =  {"values" : self.table["time"].unique(),
+                       "unit" : self.table["utim"].values[0]}
+        else:
+            result =  {"values" : self.table["time"].values,
+                       "unit" : self.table["utim"].values[0]}
+
+        return result
 
 
 ###############################################################################
 # Tests for GT3File
 ###############################################################################
 class TestGT3File(unittest.TestCase):
-    def setup(self):
+    def setUp(self):
         """ write one header and data """
         f1 = GT3File("test00", 'wb')
+
+        date = '20180616 150000'
+        utim = u'hours'
+        deltaT = 3
+
         f1.current_header = GT3Header(
             dset='test', item='hoge',
             title='testdata for TestGT3File', unit='-',
-            time=16*24+15, date='20180616 150000', utim='HOUR',
+            date=date, utim=utim, tdur=deltaT,
             aitm1='GLON64', astr1=1, aend1=64,
             aitm2='GGLA32', astr2=1, aend2=32,
             aitm3='SFC1', astr3=1, aend3=1)
@@ -1060,19 +1199,30 @@ class TestGT3File(unittest.TestCase):
         f1.write_one_header()
         f1.write_one_data()
 
-        f1.current_header.date = '20180616 160000'
-        f1.current_header.time += 1
-        f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
-        f1.write_one_header()
-        f1.write_one_data()
-
-        f1.current_header.date = '20180616 170000'
-        f1.current_header.time += 1
-        f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
-        f1.write_one_header()
-        f1.write_one_data()
+        for n in range(11):
+            f1.current_header.set_time_date(time=f1.current_header.time+deltaT)
+            f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
+            f1.write_one_header()
+            f1.write_one_data()
 
         f1.close()
+
+        f2 = GT3File("test01", 'wb')
+        f2.current_header = GT3Header(
+            dset='test',
+            title='testdata for TestGT3File', unit='-',
+            date=date, utim=utim, tdur=deltaT,
+            aitm1='GLON64', astr1=1, aend1=64,
+            aitm2='GGLA32', astr2=1, aend2=32,
+            aitm3='SFC1', astr3=1, aend3=1)
+        f2.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
+        for n in range(8):
+            f2.current_header.item = 'hoge%02d' % n
+            f2.write_one_header()
+            f2.write_one_data()
+        f2.close()
+
+        pass
 
     def test_write_00(self):
         pass
@@ -1082,46 +1232,86 @@ class TestGT3File(unittest.TestCase):
         with self.assertRaises(OSError):
             filename = 'prcpr'  # not exist
             mode = 'rb'
-            f1 = GT3File(filename, mode)
+            f = GT3File(filename, mode)
+            f.close()
 
     def test_read_01(self):
         """ Test for invalid mode."""
         with self.assertRaises(InvalidArgumentError):
             filename = 'prcpx'
             mode = 'w'  # error, must be 'wb'
-            f1 = GT3File(filename, mode)
+            f = GT3File(filename, mode)
+            f.close()
 
     def test_read_02(self):
         """ Test for writing and reading """
         expected = (
             "===== Data table: ==============================================================\n"
-            "   item  time dfmt\n"
-            "0  hoge   399  UR4\n"
-            "1  hoge   400  UR4\n"
-            "2  hoge   401  UR4\n"
+            "    item      time  tdur   utim dfmt                date   aitm1   aitm2 aitm3\n"
+            "0   hoge  17693439     3  hours  UR4 2018-06-16 15:00:00  GLON64  GGLA32  SFC1\n"
+            "1   hoge  17693442     3  hours  UR4 2018-06-16 18:00:00  GLON64  GGLA32  SFC1\n"
+            "2   hoge  17693445     3  hours  UR4 2018-06-16 21:00:00  GLON64  GGLA32  SFC1\n"
+            "3   hoge  17693448     3  hours  UR4 2018-06-17 00:00:00  GLON64  GGLA32  SFC1\n"
+            "4   hoge  17693451     3  hours  UR4 2018-06-17 03:00:00  GLON64  GGLA32  SFC1\n"
+            "5   hoge  17693454     3  hours  UR4 2018-06-17 06:00:00  GLON64  GGLA32  SFC1\n"
+            "6   hoge  17693457     3  hours  UR4 2018-06-17 09:00:00  GLON64  GGLA32  SFC1\n"
+            "7   hoge  17693460     3  hours  UR4 2018-06-17 12:00:00  GLON64  GGLA32  SFC1\n"
+            "8   hoge  17693463     3  hours  UR4 2018-06-17 15:00:00  GLON64  GGLA32  SFC1\n"
+            "9   hoge  17693466     3  hours  UR4 2018-06-17 18:00:00  GLON64  GGLA32  SFC1\n"
+            "10  hoge  17693469     3  hours  UR4 2018-06-17 21:00:00  GLON64  GGLA32  SFC1\n"
+            "11  hoge  17693472     3  hours  UR4 2018-06-18 00:00:00  GLON64  GGLA32  SFC1\n"
             "================================================================================\n")
 
-        f1 = GT3File('test00')
-        f1.scan()
-        with tempfile.TemporaryFile('w+') as f:
-            f1.show_table(file=f)
-            f.seek(0)
-            result = f.read()
+        f = GT3File('test00')
+        f.scan()
+        with tempfile.TemporaryFile('w+') as ff:
+            f.show_table(file=ff)
+            ff.seek(0)
+            result = ff.read()
+        f.close()
         self.assertMultiLineEqual(result, expected)
-        f1.close()
 
     def test_read_03(self):
         """ Test for read_current_header """
-        f1 = GT3File('test00')
-        f1.scan()
-        f1.read_one_header()
-        f1.read_one_data()
+        f = GT3File('test00')
+        f.scan()
+        f.read_one_header()
+        f.read_one_data()
 
-        self.assertTrue(f1.current_data.dtype == np.dtype('>f4'))
-        self.assertTupleEqual(f1.current_data.shape, (1, 32, 64))
-        self.assertAlmostEqual(f1.current_data.mean(), 0.)
-        f1.close()
+        self.assertTrue(f.current_data.dtype == np.dtype('>f4'))
+        self.assertTupleEqual(f.current_data.shape, (1, 32, 64))
+        self.assertAlmostEqual(f.current_data.mean(), 0.)
+        f.close()
 
+
+    def test_extract_t_axis_00(self):
+        """ Test for extract_t_axis() with multi-items file. """
+        ts = np.array([17693439])
+        expect = {'values': ts,
+                  'unit': 'hours'}
+
+        f = GT3File('test01')
+        result = f.extract_t_axis()
+        f.close()
+        self.assertEqual(tuple(result['values']), tuple(expect['values']))
+        self.assertEqual(result['unit'], expect['unit'])
+
+
+    def test_extract_t_axis_01(self):
+        """ Test for extract_t_axis(). """
+        ts = np.array(
+            [17693439, 17693442, 17693445, 17693448,
+             17693451, 17693454, 17693457, 17693460,
+             17693463, 17693466, 17693469, 17693472])
+
+        expect = {'values': ts,
+                  'unit': 'hours'}
+
+        f = GT3File('test00')
+        result = f.extract_t_axis()
+        f.close()
+        self.assertEqual(tuple(result['values']), tuple(expect['values']))
+        self.assertEqual(result['unit'], expect['unit'])
 
 ###############################################################################
 # Axis for GTOOL3
