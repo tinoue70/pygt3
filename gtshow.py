@@ -23,9 +23,10 @@ def set_idx_range(idx):
         idx.sort()
     return idx
 
-description='Show contents of gt3file.'
 
-epilog="""
+description = 'Show contents of gt3file.'
+
+epilog = """
 Index range must be single integer to be sliced at, or two integers to
 be a range.  Note that these are treated as a slice object, that is,
 `-x 1` shows data[:,:,1], but `-x 0 1` shows data[:,:,0:1] so data[:,:,1]
@@ -97,30 +98,32 @@ if (opt.debug):
     print("  file:", opt.file)
 
 
-f = GT3File(opt.file)
-f.opt_debug = opt.debug
-f.opt_verbose = opt.verbose
-f.scan()
+with GT3File(opt.file) as f:
+    f.opt_debug = opt.debug
+    f.opt_verbose = opt.verbose
+    f.scan()
 
-if (opt.show_table):
-    f.show_table()
-    sys.exit(0)
+    if (opt.show_table):
+        f.show_table()
+        sys.exit(0)
 
-while True:
-    f.read_one_header()
-    if (f.is_eof):
-        break
-    if (opt.all or f.current_header.number in opt.numbers):
-        f.dump_current_header()
-
-    if (opt.header_only):
-        f.skip_one_data()
-    else:
+    while True:
+        f.read_one_header()
+        if (f.is_eof):
+            break
         if (opt.all or f.current_header.number in opt.numbers):
-            f.read_one_data()
-            f.dump_current_data(xidx=opt.xidx, yidx=opt.yidx, zidx=opt.zidx,
-                                indexed=opt.indexed)
-        else:
-            f.skip_one_data()
+            f.dump_current_header()
 
-f.close()
+        if (opt.header_only):
+            f.skip_one_data()
+        else:
+            if (opt.all or f.current_header.number in opt.numbers):
+                f.read_one_data()
+                f.dump_current_data(xidx=opt.xidx,
+                                    yidx=opt.yidx,
+                                    zidx=opt.zidx,
+                                    indexed=opt.indexed)
+            else:
+                f.skip_one_data()
+
+sys.exit(0)
