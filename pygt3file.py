@@ -791,6 +791,12 @@ class GT3File:
         # self.packer = BitPacker()
         return None
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.close()
+
     def open(self, name, mode='rb'):
         """ re-open other file within the same instance. """
         self.close()
@@ -814,6 +820,9 @@ class GT3File:
         self.is_eof = False
         self.current_header.number = -1
         return None
+
+    def dump(self):
+        raise NotImplementedError
 
     def scan(self):
         """
@@ -1182,47 +1191,42 @@ class GT3File:
 class TestGT3File(unittest.TestCase):
     def setUp(self):
         """ write one header and data """
-        f1 = GT3File("test00", 'wb')
-
         date = '20180616 150000'
         utim = u'hours'
         deltaT = 3
 
-        f1.current_header = GT3Header(
-            dset='test', item='hoge',
-            title='testdata for TestGT3File', unit='-',
-            date=date, utim=utim, tdur=deltaT,
-            aitm1='GLON64', astr1=1, aend1=64,
-            aitm2='GGLA32', astr2=1, aend2=32,
-            aitm3='SFC1', astr3=1, aend3=1)
-        f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
-        f1.write_one_header()
-        f1.write_one_data()
-
-        for n in range(11):
-            f1.current_header.set_time_date(time=f1.current_header.time+deltaT)
+        with GT3File("test00", 'wb') as f1:
+            f1.current_header = GT3Header(
+                dset='test', item='hoge',
+                title='testdata for TestGT3File', unit='-',
+                date=date, utim=utim, tdur=deltaT,
+                aitm1='GLON64', astr1=1, aend1=64,
+                aitm2='GGLA32', astr2=1, aend2=32,
+                aitm3='SFC1', astr3=1, aend3=1)
             f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
             f1.write_one_header()
             f1.write_one_data()
 
-        f1.close()
+            for n in range(11):
+                f1.current_header.set_time_date(time=f1.current_header.time+deltaT)
+                f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
+                f1.write_one_header()
+                f1.write_one_data()
 
-        f2 = GT3File("test01", 'wb')
-        f2.current_header = GT3Header(
-            dset='test',
-            title='testdata for TestGT3File', unit='-',
-            date=date, utim=utim, tdur=deltaT,
-            aitm1='GLON64', astr1=1, aend1=64,
-            aitm2='GGLA32', astr2=1, aend2=32,
-            aitm3='SFC1', astr3=1, aend3=1)
-        f2.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
-        for n in range(8):
-            f2.current_header.item = 'hoge%02d' % n
-            f2.write_one_header()
-            f2.write_one_data()
-        f2.close()
+        with GT3File("test01", 'wb') as f2:
+            f2.current_header = GT3Header(
+                dset='test',
+                title='testdata for TestGT3File', unit='-',
+                date=date, utim=utim, tdur=deltaT,
+                aitm1='GLON64', astr1=1, aend1=64,
+                aitm2='GGLA32', astr2=1, aend2=32,
+                aitm3='SFC1', astr3=1, aend3=1)
+            f2.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
+            for n in range(8):
+                f2.current_header.item = 'hoge%02d' % n
+                f2.write_one_header()
+                f2.write_one_data()
 
-        pass
 
     def test_write_00(self):
         pass
@@ -1232,20 +1236,20 @@ class TestGT3File(unittest.TestCase):
         with self.assertRaises(OSError):
             filename = 'prcpr'  # not exist
             mode = 'rb'
-            f = GT3File(filename, mode)
-            f.close()
+            with GT3File(filename, mode) as f:
+                pass
 
     def test_read_01(self):
         """ Test for invalid mode."""
         with self.assertRaises(InvalidArgumentError):
             filename = 'prcpx'
             mode = 'w'  # error, must be 'wb'
-            f = GT3File(filename, mode)
-            f.close()
+            with GT3File(filename, mode) as f:
+                pass
 
     def test_read_02(self):
         """ Test for writing and reading """
-        expected = (
+        expect = (
             "===== Data table: ==============================================================\n"
             "    item      time  tdur   utim dfmt                date   aitm1   aitm2 aitm3\n"
             "0   hoge  17693439     3  hours  UR4 2018-06-16 15:00:00  GLON64  GGLA32  SFC1\n"
@@ -1262,40 +1266,36 @@ class TestGT3File(unittest.TestCase):
             "11  hoge  17693472     3  hours  UR4 2018-06-18 00:00:00  GLON64  GGLA32  SFC1\n"
             "================================================================================\n")
 
-        f = GT3File('test00')
-        f.scan()
-        with tempfile.TemporaryFile('w+') as ff:
-            f.show_table(file=ff)
-            ff.seek(0)
-            result = ff.read()
-        f.close()
-        self.assertMultiLineEqual(result, expected)
+        with GT3File('test00') as f:
+            f.scan()
+            with tempfile.TemporaryFile('w+') as ff:
+                f.show_table(file=ff)
+                ff.seek(0)
+                result = ff.read()
+
+        self.assertMultiLineEqual(result, expect)
 
     def test_read_03(self):
         """ Test for read_current_header """
-        f = GT3File('test00')
-        f.scan()
-        f.read_one_header()
-        f.read_one_data()
+        with GT3File('test00') as f:
+            f.scan()
+            f.read_one_header()
+            f.read_one_data()
 
         self.assertTrue(f.current_data.dtype == np.dtype('>f4'))
         self.assertTupleEqual(f.current_data.shape, (1, 32, 64))
         self.assertAlmostEqual(f.current_data.mean(), 0.)
-        f.close()
-
 
     def test_extract_t_axis_00(self):
         """ Test for extract_t_axis() with multi-items file. """
         ts = np.array([17693439])
-        expect = {'values': ts,
-                  'unit': 'hours'}
+        expect = {'values': ts, 'unit': 'hours'}
 
-        f = GT3File('test01')
-        result = f.extract_t_axis()
-        f.close()
+        with GT3File('test01') as f:
+            result = f.extract_t_axis()
+
         self.assertEqual(tuple(result['values']), tuple(expect['values']))
         self.assertEqual(result['unit'], expect['unit'])
-
 
     def test_extract_t_axis_01(self):
         """ Test for extract_t_axis(). """
@@ -1303,13 +1303,11 @@ class TestGT3File(unittest.TestCase):
             [17693439, 17693442, 17693445, 17693448,
              17693451, 17693454, 17693457, 17693460,
              17693463, 17693466, 17693469, 17693472])
+        expect = {'values': ts,'unit': 'hours'}
 
-        expect = {'values': ts,
-                  'unit': 'hours'}
+        with GT3File('test00') as f:
+            result = f.extract_t_axis()
 
-        f = GT3File('test00')
-        result = f.extract_t_axis()
-        f.close()
         self.assertEqual(tuple(result['values']), tuple(expect['values']))
         self.assertEqual(result['unit'], expect['unit'])
 
