@@ -872,16 +872,15 @@ class GT3File:
         Show data table, created by scan().
         """
 
-        if (self.table is not None):
-            liner = "="*5 + " Data table: "
-            liner += "="*(80-len(liner))
-            print(liner, file=file)
-            print(self.table.to_string(), file=file)
-            print("="*len(liner), file=file)
-        else:
-            print("Data table is not created, use .scan() first.",
-                  file=sys.stderr)
-            sys.exit(1)
+        if (self.table is None):
+            self.scan()
+        liner = "="*5 + " Data table: "
+        liner += "="*(80-len(liner))
+        print(liner, file=file)
+        print(self.table.to_string(), file=file)
+        print("="*len(liner), file=file)
+
+        return None
 
     def read_one_header(self):
         """
@@ -1155,10 +1154,26 @@ class GT3File:
         - have num_of_times > 0 and num_of_items == 1, ie, one
           variable in the file,
 
-        Returns ndarray of `time` attributes.
-        """
+        If num_of_items > 1, assumes all times have same and time
+        value(s).
 
-        raise NotImplementedError
+        Returns dict{"values","unit'}, and values is an ndarray of
+        `time`.
+        """
+        if (self.table is None):
+            self.scan()
+
+        if (self.num_of_times <= 0):
+            print('Warn: num_of_times is not positive: %d' % self.num_of_times)
+            result = None
+        elif (self.num_of_items > 1):
+            result =  {"values" : self.table["time"].unique(),
+                       "unit" : self.table["utim"].values[0]}
+        else:
+            result =  {"values" : self.table["time"].values,
+                       "unit" : self.table["utim"].values[0]}
+
+        return result
 
 
 ###############################################################################
@@ -1168,10 +1183,15 @@ class TestGT3File(unittest.TestCase):
     def setUp(self):
         """ write one header and data """
         f1 = GT3File("test00", 'wb')
+
+        date = '20180616 150000'
+        utim = u'hours'
+        deltaT = 3
+
         f1.current_header = GT3Header(
             dset='test', item='hoge',
             title='testdata for TestGT3File', unit='-',
-            date='20180616 150000', utim='hours',
+            date=date, utim=utim, tdur=deltaT,
             aitm1='GLON64', astr1=1, aend1=64,
             aitm2='GGLA32', astr2=1, aend2=32,
             aitm3='SFC1', astr3=1, aend3=1)
@@ -1179,17 +1199,28 @@ class TestGT3File(unittest.TestCase):
         f1.write_one_header()
         f1.write_one_data()
 
-        f1.current_header.set_time_date(time=f1.current_header.time+3)
-        f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
-        f1.write_one_header()
-        f1.write_one_data()
-
-        f1.current_header.set_time_date(time=f1.current_header.time+3)
-        f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
-        f1.write_one_header()
-        f1.write_one_data()
+        for n in range(11):
+            f1.current_header.set_time_date(time=f1.current_header.time+deltaT)
+            f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
+            f1.write_one_header()
+            f1.write_one_data()
 
         f1.close()
+
+        f2 = GT3File("test01", 'wb')
+        f2.current_header = GT3Header(
+            dset='test',
+            title='testdata for TestGT3File', unit='-',
+            date=date, utim=utim, tdur=deltaT,
+            aitm1='GLON64', astr1=1, aend1=64,
+            aitm2='GGLA32', astr2=1, aend2=32,
+            aitm3='SFC1', astr3=1, aend3=1)
+        f2.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
+        for n in range(8):
+            f2.current_header.item = 'hoge%02d' % n
+            f2.write_one_header()
+            f2.write_one_data()
+        f2.close()
 
         pass
 
@@ -1216,10 +1247,19 @@ class TestGT3File(unittest.TestCase):
         """ Test for writing and reading """
         expected = (
             "===== Data table: ==============================================================\n"
-            "   item      time  tdur   utim dfmt                date   aitm1   aitm2 aitm3\n"
-            "0  hoge  17693439     0  hours  UR4 2018-06-16 15:00:00  GLON64  GGLA32  SFC1\n"
-            "1  hoge  17693442     0  hours  UR4 2018-06-16 18:00:00  GLON64  GGLA32  SFC1\n"
-            "2  hoge  17693445     0  hours  UR4 2018-06-16 21:00:00  GLON64  GGLA32  SFC1\n"
+            "    item      time  tdur   utim dfmt                date   aitm1   aitm2 aitm3\n"
+            "0   hoge  17693439     3  hours  UR4 2018-06-16 15:00:00  GLON64  GGLA32  SFC1\n"
+            "1   hoge  17693442     3  hours  UR4 2018-06-16 18:00:00  GLON64  GGLA32  SFC1\n"
+            "2   hoge  17693445     3  hours  UR4 2018-06-16 21:00:00  GLON64  GGLA32  SFC1\n"
+            "3   hoge  17693448     3  hours  UR4 2018-06-17 00:00:00  GLON64  GGLA32  SFC1\n"
+            "4   hoge  17693451     3  hours  UR4 2018-06-17 03:00:00  GLON64  GGLA32  SFC1\n"
+            "5   hoge  17693454     3  hours  UR4 2018-06-17 06:00:00  GLON64  GGLA32  SFC1\n"
+            "6   hoge  17693457     3  hours  UR4 2018-06-17 09:00:00  GLON64  GGLA32  SFC1\n"
+            "7   hoge  17693460     3  hours  UR4 2018-06-17 12:00:00  GLON64  GGLA32  SFC1\n"
+            "8   hoge  17693463     3  hours  UR4 2018-06-17 15:00:00  GLON64  GGLA32  SFC1\n"
+            "9   hoge  17693466     3  hours  UR4 2018-06-17 18:00:00  GLON64  GGLA32  SFC1\n"
+            "10  hoge  17693469     3  hours  UR4 2018-06-17 21:00:00  GLON64  GGLA32  SFC1\n"
+            "11  hoge  17693472     3  hours  UR4 2018-06-18 00:00:00  GLON64  GGLA32  SFC1\n"
             "================================================================================\n")
 
         f = GT3File('test00')
@@ -1228,8 +1268,8 @@ class TestGT3File(unittest.TestCase):
             f.show_table(file=ff)
             ff.seek(0)
             result = ff.read()
-        self.assertMultiLineEqual(result, expected)
         f.close()
+        self.assertMultiLineEqual(result, expected)
 
     def test_read_03(self):
         """ Test for read_current_header """
@@ -1243,6 +1283,35 @@ class TestGT3File(unittest.TestCase):
         self.assertAlmostEqual(f.current_data.mean(), 0.)
         f.close()
 
+
+    def test_extract_t_axis_00(self):
+        """ Test for extract_t_axis() with multi-items file. """
+        ts = np.array([17693439])
+        expect = {'values': ts,
+                  'unit': 'hours'}
+
+        f = GT3File('test01')
+        result = f.extract_t_axis()
+        f.close()
+        self.assertEqual(tuple(result['values']), tuple(expect['values']))
+        self.assertEqual(result['unit'], expect['unit'])
+
+
+    def test_extract_t_axis_01(self):
+        """ Test for extract_t_axis(). """
+        ts = np.array(
+            [17693439, 17693442, 17693445, 17693448,
+             17693451, 17693454, 17693457, 17693460,
+             17693463, 17693466, 17693469, 17693472])
+
+        expect = {'values': ts,
+                  'unit': 'hours'}
+
+        f = GT3File('test00')
+        result = f.extract_t_axis()
+        f.close()
+        self.assertEqual(tuple(result['values']), tuple(expect['values']))
+        self.assertEqual(result['unit'], expect['unit'])
 
 ###############################################################################
 # Axis for GTOOL3
