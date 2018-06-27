@@ -833,9 +833,9 @@ class GT3File:
             self.num_of_data += 1
             tbl.append([self.current_header.item,
                         int(str(self.current_header.time).split()[0]),
+                        self.current_header.tdur,
                         self.current_header.utim,
                         self.current_header.dfmt,
-                        self.current_header.tdur,
                         self.current_header.date,
                         self.current_header.aitm1,
                         self.current_header.aitm2,
@@ -844,9 +844,9 @@ class GT3File:
         self.table = pd.DataFrame(tbl)
         self.table.columns = ['item',
                               'time',
+                              'tdur',
                               'utim',
                               'dfmt',
-                              'tdur',
                               'date',
                               'aitm1',
                               'aitm2',
@@ -1216,10 +1216,10 @@ class TestGT3File(unittest.TestCase):
         """ Test for writing and reading """
         expected = (
             "===== Data table: ==============================================================\n"
-            "   item      time   utim dfmt  tdur                date   aitm1   aitm2 aitm3\n"
-            "0  hoge  17693439  hours  UR4     0 2018-06-16 15:00:00  GLON64  GGLA32  SFC1\n"
-            "1  hoge  17693442  hours  UR4     0 2018-06-16 18:00:00  GLON64  GGLA32  SFC1\n"
-            "2  hoge  17693445  hours  UR4     0 2018-06-16 21:00:00  GLON64  GGLA32  SFC1\n"
+            "   item      time  tdur   utim dfmt                date   aitm1   aitm2 aitm3\n"
+            "0  hoge  17693439     0  hours  UR4 2018-06-16 15:00:00  GLON64  GGLA32  SFC1\n"
+            "1  hoge  17693442     0  hours  UR4 2018-06-16 18:00:00  GLON64  GGLA32  SFC1\n"
+            "2  hoge  17693445     0  hours  UR4 2018-06-16 21:00:00  GLON64  GGLA32  SFC1\n"
             "================================================================================\n")
 
         f = GT3File('test00')
