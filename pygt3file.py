@@ -860,10 +860,12 @@ class GT3File:
                               'aitm1',
                               'aitm2',
                               'aitm3']
-        self.num_of_times = self.table.pivot_table(
-            index='time', aggfunc=[len]).shape[0]
-        self.num_of_items = self.table.pivot_table(
-            index='item', aggfunc=[len]).shape[0]
+        # self.num_of_times = self.table.pivot_table(
+        #     index='time', aggfunc=[len]).shape[0]
+        # self.num_of_items = self.table.pivot_table(
+        #     index='item', aggfunc=[len]).shape[0]
+        self.num_of_times = self.table['time'].nunique()
+        self.num_of_items = self.table['item'].nunique()
 
         if (self.opt_verbose):
             liner = "="*5 + " %s: Scan result: " % self.name
