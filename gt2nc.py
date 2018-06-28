@@ -25,11 +25,8 @@ parser.add_argument(
     '-v', '--verbose', help='verbose output',
     action='store_true')
 parser.add_argument(
-    '-H', '--header', help='Show header only.',
-    action='store_true')
-parser.add_argument(
     '-T', '--table', help='Show data table only.',
-    action='store_true')
+    action='store_true', dest='show_table')
 parser.add_argument(
     'ifile', help='input gt3 file name.')
 parser.add_argument(
@@ -37,36 +34,27 @@ parser.add_argument(
     default='new.nc')
 parser.add_argument(
     '-n', '--number', help='data number to plot.',
-    type=int, default=0)
+    type=int, default=0, dest='data_number')
 parser.add_argument(
     '--axdir', help='axis file directory.',
     default=None)
 
-a = A()
-parser.parse_args(namespace=a)
+opt = A()
+parser.parse_args(namespace=opt)
 
-ifile = a.ifile
-ofile = a.ofile
+ifile = opt.ifile
+ofile = opt.ofile
 
-opt_data_number = a.number
-if (a.axdir is not None):
-    opt_axdir = a.axdir.split(':')
-else:
-    opt_axdir = None
+if (opt.axdir is not None):
+    opt.axdir = opt.axdir.split(':')
 
-opt_header_only = a.header
-opt_show_table = a.table
-opt_debug = a.debug
-opt_verbose = a.verbose
+if (opt.debug):
+    opt.verbose = True
 
-if (opt_debug):
-    opt_verbose = True
-
-if (opt_debug):
-    print("dbg:opt_header_only:", opt_header_only)
-    print("dbg:opt_show_table:", opt_show_table)
-    print("dbg:opt_data_number:", opt_data_number)
-    print("dbg:opt_axdir:", opt_axdir)
+if (opt.debug):
+    print("dbg:opt.show_table:", opt.show_table)
+    print("dbg:opt.data_number:", opt.data_number)
+    print("dbg:opt.axdir:", opt.axdir)
     print("dbg:ifile:", ifile)
     print("dbg:ofile:", ofile)
 
@@ -74,47 +62,47 @@ if (opt_debug):
 # Extract target data
 ###############################################################################
 gf = GT3File(ifile)
-gf.opt_debug = opt_debug
-gf.opt_verbose = opt_verbose
+gf.opt_debug = opt.debug
+gf.opt_verbose = opt.verbose
 
 gf.scan()
-if (opt_show_table):
+if (opt.show_table):
     gf.show_table()
     sys.exit(0)
 
-if (opt_data_number not in range(gf.num_of_data)):
+if (opt.data_number not in range(gf.num_of_data)):
     print('Error: data number out of range: %d is not in range(%d)'
-          % (opt_data_number, gf.num_of_data))
+          % (opt.data_number, gf.num_of_data))
     sys.exit(1)
 
 gtvar = A()
 gtvar.header = None
 gtvar.data = None
 
-gtvar.header, gtvar.data = gf.read_nth_data(opt_data_number)
-if (opt_verbose):
+gtvar.header, gtvar.data = gf.read_nth_data(opt.data_number)
+if (opt.verbose):
     gtvar.header.dump()
 gf.close()
 ###############################################################################
 # Prepare axis data
 ###############################################################################
 
-xax = GT3Axis(gtvar.header.aitm1, opt_axdir)
+xax = GT3Axis(gtvar.header.aitm1, opt.axdir)
 if (xax.file is None):
     sys.exit(1)
-if (opt_debug):
+if (opt.debug):
     xax.dump()
 
-yax = GT3Axis(gtvar.header.aitm2, opt_axdir)
+yax = GT3Axis(gtvar.header.aitm2, opt.axdir)
 if (yax.file is None):
     sys.exit(1)
-if (opt_debug):
+if (opt.debug):
     yax.dump()
 
-zax = GT3Axis(gtvar.header.aitm3, opt_axdir)
+zax = GT3Axis(gtvar.header.aitm3, opt.axdir)
 if (zax.file is None):
     sys.exit(1)
-if (opt_debug):
+if (opt.debug):
     zax.dump()
 
 ###############################################################################
