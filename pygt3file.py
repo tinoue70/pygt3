@@ -1178,11 +1178,11 @@ class GT3File:
             print('Warn: num_of_times is not positive: %d' % self.num_of_times)
             result = None
         elif (self.num_of_items > 1):
-            result =  {"values" : self.table["time"].unique(),
-                       "unit" : self.table["utim"].values[0]}
+            result = {"values": self.table["time"].unique(),
+                      "unit": self.table["utim"].values[0]}
         else:
-            result =  {"values" : self.table["time"].values,
-                       "unit" : self.table["utim"].values[0]}
+            result = {"values": self.table["time"].values,
+                      "unit": self.table["utim"].values[0]}
 
         return result
 
@@ -1210,7 +1210,8 @@ class TestGT3File(unittest.TestCase):
             f1.write_one_data()
 
             for n in range(11):
-                f1.current_header.set_time_date(time=f1.current_header.time+deltaT)
+                f1.current_header.set_time_date(
+                    time=f1.current_header.time+deltaT)
                 f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
                 f1.write_one_header()
                 f1.write_one_data()
@@ -1228,7 +1229,6 @@ class TestGT3File(unittest.TestCase):
                 f2.current_header.item = 'hoge%02d' % n
                 f2.write_one_header()
                 f2.write_one_data()
-
 
     def test_write_00(self):
         pass
@@ -1305,13 +1305,14 @@ class TestGT3File(unittest.TestCase):
             [17693439, 17693442, 17693445, 17693448,
              17693451, 17693454, 17693457, 17693460,
              17693463, 17693466, 17693469, 17693472])
-        expect = {'values': ts,'unit': 'hours'}
+        expect = {'values': ts, 'unit': 'hours'}
 
         with GT3File('test00') as f:
             result = f.extract_t_axis()
 
         self.assertEqual(tuple(result['values']), tuple(expect['values']))
         self.assertEqual(result['unit'], expect['unit'])
+
 
 ###############################################################################
 # Axis for GTOOL3
