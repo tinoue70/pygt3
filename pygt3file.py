@@ -1333,7 +1333,7 @@ class GT3Axis():
         if (self.file is not None):
             f = GT3File(self.file)
         else:
-            self.file = None
+            self = None
             return
         if (f is None):
             self = None
@@ -1342,6 +1342,7 @@ class GT3Axis():
         self.name = name   # "GLONxx" etc.
         self.header, self.data = f.read_nth_data(0)
         self.title = f.current_header.titl  # "longitude" etc.
+        self.unit = f.current_header.unit
         self.data = f.current_data.flatten()
         if (f.current_header.cyclic):
             self.data = self.data[:-1]
