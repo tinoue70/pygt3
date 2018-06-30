@@ -2,20 +2,22 @@
 from __future__ import print_function
 import netCDF4
 import numpy as np
+# import pandas as pd
 from pygt3file import GT3File, GT3Axis
 import argparse
 import sys
+import os
+import datetime
 
 
 class A:
     """ general purpose bare class."""
     pass
 
+
 ###############################################################################
 # Here We Go
 ###############################################################################
-
-
 parser = argparse.ArgumentParser(description='Plot one data in gt3file')
 
 parser.add_argument(
@@ -25,11 +27,8 @@ parser.add_argument(
     '-v', '--verbose', help='verbose output',
     action='store_true')
 parser.add_argument(
-    '-H', '--header', help='Show header only.',
-    action='store_true')
-parser.add_argument(
     '-T', '--table', help='Show data table only.',
-    action='store_true')
+    action='store_true', dest='show_table')
 parser.add_argument(
     'ifile', help='input gt3 file name.')
 parser.add_argument(
@@ -37,129 +36,193 @@ parser.add_argument(
     default='new.nc')
 parser.add_argument(
     '-n', '--number', help='data number to plot.',
-    type=int, default=0)
+    type=int, default=0, dest='data_number')
 parser.add_argument(
     '--axdir', help='axis file directory.',
     default=None)
+parser.add_argument(
+    '--zlib', help='use zlib compression.',
+    action='store_true', dest='zlib')
+parser.add_argument(
+    '-c', '--create_ctl', help='create ctl file for GrADS.',
+    action='store_true', dest='create_ctl')
 
-a = A()
-parser.parse_args(namespace=a)
+opt = A()
+parser.parse_args(namespace=opt)
 
-ifile = a.ifile
-ofile = a.ofile
+if (opt.axdir is not None):
+    opt.axdir = opt.axdir.split(':')
 
-opt_data_number = a.number
-if (a.axdir is not None):
-    opt_axdir = a.axdir.split(':')
-else:
-    opt_axdir = None
+if (opt.debug):
+    opt.verbose = True
 
-opt_header_only = a.header
-opt_show_table = a.table
-opt_debug = a.debug
-opt_verbose = a.verbose
+if (opt.debug):
+    print("dbg:show_table:", opt.show_table)
+    print("dbg:data_number:", opt.data_number)
+    print("dbg:axdir:", opt.axdir)
+    print("dbg:create_ctl:", opt.create_ctl)
+    print("dbg:zlib:", opt.zlib)
+    print("dbg:ifile:", opt.ifile)
+    print("dbg:ofile:", opt.ofile)
 
-if (opt_debug):
-    opt_verbose = True
+gf = GT3File(opt.ifile)
+gf.opt_debug = opt.debug
+gf.opt_verbose = opt.verbose
 
-if (opt_debug):
-    print("dbg:opt_header_only:", opt_header_only)
-    print("dbg:opt_show_table:", opt_show_table)
-    print("dbg:opt_data_number:", opt_data_number)
-    print("dbg:opt_axdir:", opt_axdir)
-    print("dbg:ifile:", ifile)
-    print("dbg:ofile:", ofile)
-
-###############################################################################
-# Extract target data
-###############################################################################
-gf = GT3File(ifile)
-gf.opt_debug = opt_debug
-gf.opt_verbose = opt_verbose
-
+print('Read in %s.' % opt.ifile)
 gf.scan()
-if (opt_show_table):
+if (opt.show_table):
     gf.show_table()
     sys.exit(0)
 
-if (opt_data_number not in range(gf.num_of_data)):
-    print('Error: data number out of range: %d is not in range(%d)'
-          % (opt_data_number, gf.num_of_data))
+if (gf.num_of_items > 1):
+    print('Multi items is not implemented yet, sorry')
+    raise NotImplementedError
+
+# for safety
+if (any([gf.table['aitm1'].nunique() > 1,
+         gf.table['aitm2'].nunique() > 1,
+         gf.table['aitm3'].nunique() > 1])):
+    print('Multi axis is not supported.')
+    raise NotImplementedError
+
+# freezed below for a while.
+# if (opt.data_number not in range(gf.num_of_data)):
+#     print('Error: data number out of range: %d is not in range(%d)'
+#           % (opt.data_number, gf.num_of_data))
+#     sys.exit(1)
+
+gf.read_one_header()
+gf.read_one_data()
+
+if (gf.current_header.dfmt == 'UR4'):
+    dtype = 'f4'
+elif (gf.current_header.dfmt == 'UR8'):
+    dtype = 'f8'
+elif (gf.current_header.dfmt == 'URC'):
+    dtype = 'f4'
+elif (gf.current_header.dfmt[:3] == 'URY'):
+    dtype = 'f4'
+else:
+    print('Error: Unknown dfmt: %s' % gf.current_header.dfmt)
     sys.exit(1)
 
-gtvar = A()
-gtvar.header = None
-gtvar.data = None
-
-gtvar.header, gtvar.data = gf.read_nth_data(opt_data_number)
-if (opt_verbose):
-    gtvar.header.dump()
-gf.close()
-###############################################################################
-# Prepare axis data
-###############################################################################
-
-xax = GT3Axis(gtvar.header.aitm1, opt_axdir)
-if (xax.file is None):
+xax = GT3Axis(gf.current_header.aitm1, opt.axdir)
+if (xax is None):
     sys.exit(1)
-if (opt_debug):
+if (opt.debug):
     xax.dump()
+if (xax.unit == 'deg'):
+    xax.unit = 'degrees_east'
 
-yax = GT3Axis(gtvar.header.aitm2, opt_axdir)
-if (yax.file is None):
+yax = GT3Axis(gf.current_header.aitm2, opt.axdir)
+if (yax is None):
     sys.exit(1)
-if (opt_debug):
+if (opt.debug):
     yax.dump()
+if (yax.unit == 'deg'):
+    yax.unit = 'degrees_north'
 
-zax = GT3Axis(gtvar.header.aitm3, opt_axdir)
-if (zax.file is None):
+zax = GT3Axis(gf.current_header.aitm3, opt.axdir)
+if (zax is None):
     sys.exit(1)
-if (opt_debug):
+if (opt.debug):
     zax.dump()
 
 ###############################################################################
 # netCDF4
 ###############################################################################
-nf = netCDF4.Dataset(ofile, mode='w')
+nf = netCDF4.Dataset(opt.ofile, mode='w')
+nf.title = gf.current_header.titl
+# nf.Conventions = 'CF-1.4'
+nf.history = 'Converted at  %s by pygt3file library.' \
+             % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 xdim = nf.createDimension(xax.title, xax.size)
 ydim = nf.createDimension(yax.title, yax.size)
 zdim = nf.createDimension(zax.title, zax.size)
-
-# todo: tdim
-
-for dim in nf.dimensions.items():
-    print(dim)
-
-
-nf.title = gtvar.header.titl
-print(nf.title)
+tdim = nf.createDimension('time', None)  # unlimited axis
 
 xvar = nf.createVariable(xdim.name, np.float32, (xdim.name,))
 xvar.long_name = xdim.name
+xvar.units = xax.unit
+
 yvar = nf.createVariable(ydim.name, np.float32, (ydim.name,))
 yvar.long_name = ydim.name
+yvar.units = yax.unit
+
 zvar = nf.createVariable(zdim.name, np.float32, (zdim.name,))
 zvar.long_name = zdim.name
+zvar.units = zax.unit
+
+tvar = nf.createVariable('time', np.float64, ('time',))
+tvar.long_name = 'time'
+tvar.units = 'seconds since 1970-01-01 00:00:00'
 
 ncvar = nf.createVariable(
-    nf.title, np.float64, (zdim.name, ydim.name, xdim.name))
-
-print('==== var: ====')
-print(ncvar)
-print("-- Some pre-defined attributes for variable :")
-print("dimensions:", ncvar.dimensions)
-print("shape:", ncvar.shape)
-print("dtype:", ncvar.dtype)
-print("ndim:", ncvar.ndim)
+    gf.current_header.item,
+    dtype,
+    (tdim.name, zdim.name, ydim.name, xdim.name),
+    chunksizes=(1, zax.size, yax.size, xax.size),
+    zlib=opt.zlib)
+ncvar.long_name = gf.current_header.titl
+ncvar.units = gf.current_header.unit
 
 xvar[:] = xax.data
 yvar[:] = yax.data
 zvar[:] = zax.data
-ncvar[:] = gtvar.data
 
-print(ncvar[:, :, :].shape, ncvar[:, :, :].min(), ncvar[:, :, :].max())
-print(nf)
+tidx = 0
+ncvar[tidx, :, :, :] = gf.current_data
+ts = gf.current_header.date.astype(datetime.datetime)
+tvar[tidx] = netCDF4.date2num(ts, units=tvar.units)
+if (opt.verbose):
+    print('Item: %s' % gf.current_header.item)
+    print('Converted tidx=%d' % tidx)
+
+while True:
+    gf.read_one_header()
+    if (gf.is_eof):
+        break
+    gf.read_one_data()
+    tidx += 1
+    ncvar[tidx, :, :, :] = gf.current_data
+    ts = gf.current_header.date.astype(datetime.datetime)
+    tvar[tidx] = netCDF4.date2num(ts, units=tvar.units)
+    if (opt.verbose):
+        print('Converted tidx=%d' % tidx)
+
+gf.close()
+
+print('Created %s.' % opt.ofile)
+
+if (opt.debug):
+    print('==== netCDF file: ====')
+    print(nf)
+    print('==== netCDF var: ====')
+    print(ncvar)
+    print("-- Some pre-defined attributes for variable :")
+    print("dimensions:", ncvar.dimensions)
+    print("shape:", ncvar.shape)
+    print("dtype:", ncvar.dtype)
+    print("ndim:", ncvar.ndim)
+    print('==== netCDF axis: ====')
+    for dim in nf.dimensions.items():
+        print(dim)
+
+if (opt.create_ctl):
+    ctlfile = os.path.splitext(opt.ofile)[0]+'.ctl'
+    with open(ctlfile, 'w') as cf:
+        cf.write(u'DSET ^%s\n' % os.path.basename(opt.ofile))
+        cf.write(u'DTYPE netcdf\n')
+        cf.write(u'XDEF %s\n' % xdim.name)
+        cf.write(u'YDEF %s\n' % ydim.name)
+        cf.write(u'ZDEF %s\n' % zdim.name)
+        cf.write(u'TDEF %s\n' % tdim.name)
+        cf.write(u'VARS 1\n')
+        cf.write(u'%s\n' % ncvar.name)
+        cf.write(u'ENDVARS\n')
+    print('Created %s.' % ctlfile)
 nf.close()
 
 sys.exit(0)

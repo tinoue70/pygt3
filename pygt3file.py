@@ -860,10 +860,12 @@ class GT3File:
                               'aitm1',
                               'aitm2',
                               'aitm3']
-        self.num_of_times = self.table.pivot_table(
-            index='time', aggfunc=[len]).shape[0]
-        self.num_of_items = self.table.pivot_table(
-            index='item', aggfunc=[len]).shape[0]
+        # self.num_of_times = self.table.pivot_table(
+        #     index='time', aggfunc=[len]).shape[0]
+        # self.num_of_items = self.table.pivot_table(
+        #     index='item', aggfunc=[len]).shape[0]
+        self.num_of_times = self.table['time'].nunique()
+        self.num_of_items = self.table['item'].nunique()
 
         if (self.opt_verbose):
             liner = "="*5 + " %s: Scan result: " % self.name
@@ -1176,11 +1178,11 @@ class GT3File:
             print('Warn: num_of_times is not positive: %d' % self.num_of_times)
             result = None
         elif (self.num_of_items > 1):
-            result =  {"values" : self.table["time"].unique(),
-                       "unit" : self.table["utim"].values[0]}
+            result = {"values": self.table["time"].unique(),
+                      "unit": self.table["utim"].values[0]}
         else:
-            result =  {"values" : self.table["time"].values,
-                       "unit" : self.table["utim"].values[0]}
+            result = {"values": self.table["time"].values,
+                      "unit": self.table["utim"].values[0]}
 
         return result
 
@@ -1208,7 +1210,8 @@ class TestGT3File(unittest.TestCase):
             f1.write_one_data()
 
             for n in range(11):
-                f1.current_header.set_time_date(time=f1.current_header.time+deltaT)
+                f1.current_header.set_time_date(
+                    time=f1.current_header.time+deltaT)
                 f1.set_current_data(np.zeros(shape=(1, 32, 64), dtype='f4'))
                 f1.write_one_header()
                 f1.write_one_data()
@@ -1226,7 +1229,6 @@ class TestGT3File(unittest.TestCase):
                 f2.current_header.item = 'hoge%02d' % n
                 f2.write_one_header()
                 f2.write_one_data()
-
 
     def test_write_00(self):
         pass
@@ -1303,13 +1305,14 @@ class TestGT3File(unittest.TestCase):
             [17693439, 17693442, 17693445, 17693448,
              17693451, 17693454, 17693457, 17693460,
              17693463, 17693466, 17693469, 17693472])
-        expect = {'values': ts,'unit': 'hours'}
+        expect = {'values': ts, 'unit': 'hours'}
 
         with GT3File('test00') as f:
             result = f.extract_t_axis()
 
         self.assertEqual(tuple(result['values']), tuple(expect['values']))
         self.assertEqual(result['unit'], expect['unit'])
+
 
 ###############################################################################
 # Axis for GTOOL3
@@ -1331,7 +1334,7 @@ class GT3Axis():
         if (self.file is not None):
             f = GT3File(self.file)
         else:
-            self.file = None
+            self = None
             return
         if (f is None):
             self = None
@@ -1340,6 +1343,7 @@ class GT3Axis():
         self.name = name   # "GLONxx" etc.
         self.header, self.data = f.read_nth_data(0)
         self.title = f.current_header.titl  # "longitude" etc.
+        self.unit = f.current_header.unit
         self.data = f.current_data.flatten()
         if (f.current_header.cyclic):
             self.data = self.data[:-1]
