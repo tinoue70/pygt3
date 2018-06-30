@@ -24,6 +24,7 @@ dt = 3*3600  # 3hour
 xax = 'GLON64'
 yax = 'GGLA32'
 zax = 'SFC1'
+dfmt = 'UR4'
 
 parser = argparse.ArgumentParser(description='Plot one data in gt3file')
 
@@ -73,6 +74,9 @@ parser.add_argument(
 parser.add_argument(
     '--dt', help='delta t (in unit `utim`)',
     default=dt)
+parser.add_argument(
+    '--dfmt', help='dfmt for GTOOL3 format.',
+    default=dfmt)
 
 opt = A()
 parser.parse_args(namespace=opt)
@@ -92,6 +96,7 @@ if (opt.debug):
     print("dbg:axdir:", opt.axdir)
     print("dbg:date:", opt.date)
     print("dbg:utim:", opt.utim)
+    print("dbg:dfmt:", opt.dfmt)
 
 if (opt.axdir is not None):
     opt.axdir = opt.axdir.split(':')
@@ -116,15 +121,29 @@ aitm1, astr1, aend1 = (xax.name, 1, xax.size)
 aitm2, astr2, aend2 = (yax.name, 1, yax.size)
 aitm3, astr3, aend3 = (zax.name, 1, zax.size)
 
-x = np.sin(np.linspace(-np.pi*2., np.pi*2., xax.size))
-y = np.cos(np.linspace(-np.pi, np.pi, yax.size))
-z = np.exp(np.linspace(np.pi, 0., zax.size))
+if (opt.dfmt == 'UR4'):
+    dtype = '>f4'
+elif (opt.dfmt == 'UR8'):
+    dtype = '>f8'
+elif (opt.dfmt == 'URC'):
+    dtype = '>f8'
+elif (opt.dfmt == 'URY'):
+    dtype = '>f8'
+else:
+    print('Error: Invalid dfmt: %s' % opt.dfmt)
+    sys.exit(1)
+
+
+x = np.sin(np.linspace(-np.pi*2., np.pi*2., xax.size), dtype=dtype)
+y = np.cos(np.linspace(-np.pi, np.pi, yax.size), dtype=dtype)
+z = np.exp(np.linspace(np.pi, 0., zax.size), dtype=dtype)
 d = np.outer(z,np.outer(y,x)).reshape(zax.size,yax.size,xax.size)
 
 with GT3File(opt.ofile, mode='wb') as f:
     f.current_header = GT3Header(
         dset=opt.dset,
         item=opt.item, unit=opt.unit, title=opt.title,
+        dfmt=opt.dfmt,
         date=opt.date, utim=opt.utim,
         aitm1=aitm1, astr1=astr1, aend1=aend1,
         aitm2=aitm2, astr2=astr2, aend2=aend2,
@@ -136,7 +155,6 @@ with GT3File(opt.ofile, mode='wb') as f:
     f.write_one_data()
 
     for i in range(opt.num_times-1):
-        d[:,:,:] = d[:,:,:] + 1.0
         time = f.current_header.time\
                + np.timedelta64(opt.dt, unit=opt.utim)
 
