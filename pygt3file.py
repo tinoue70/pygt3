@@ -1187,6 +1187,17 @@ class GT3File:
         return result
 
 
+    def read(self):
+        """
+        Iterator Generator
+        """
+        while True:
+            self.read_one_header()
+            if (self.is_eof):
+                return
+            self.read_one_data()
+            yield self.current_header, self.current_data
+
 ###############################################################################
 # Tests for GT3File
 ###############################################################################
@@ -1312,6 +1323,48 @@ class TestGT3File(unittest.TestCase):
 
         self.assertEqual(tuple(result['values']), tuple(expect['values']))
         self.assertEqual(result['unit'], expect['unit'])
+
+    def test_read_00(self):
+        """ Test for read(). """
+        import io
+        from contextlib import redirect_stdout
+        expect = """\
+2018-06-16T15
+0.0
+2018-06-16T18
+0.0
+2018-06-16T21
+0.0
+2018-06-17T00
+0.0
+2018-06-17T03
+0.0
+2018-06-17T06
+0.0
+2018-06-17T09
+0.0
+2018-06-17T12
+0.0
+2018-06-17T15
+0.0
+2018-06-17T18
+0.0
+2018-06-17T21
+0.0
+2018-06-18T00
+0.0
+"""
+
+        o = io.StringIO()
+        with redirect_stdout(o):
+            with GT3File('test00') as f:
+                for h, d in f.read():
+                    # h.dump()
+                    print(h.date)
+                    print(d[0, 0, 0])
+        result = o.getvalue()
+        o.close()
+        self.assertMultiLineEqual(result, expect)
 
 
 ###############################################################################
