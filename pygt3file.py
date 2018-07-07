@@ -468,8 +468,64 @@ class GT3Header:
 
 class GT3Data(np.ndarray):
     """ GT3Data class"""
-    pass
 
+    def select_data_range(self, xidx=(), yidx=(), zidx=()):
+        """
+        Select data index range from current_data and return it.
+
+        Index range is specified by a single integer to slice at it,
+        or two element tuple or list to specify range.
+        """
+        # print('dbg:', xidx, yidx, zidx)
+        if (len(xidx) == 0):
+            xidx = [0, self.shape[2]]
+        if (len(yidx) == 0):
+            yidx = [0, self.shape[1]]
+        if (len(zidx) == 0):
+            zidx = [0, self.shape[0]]
+
+        d = self[zidx[0]:zidx[1], yidx[0]:yidx[1], xidx[0]:xidx[1]]
+        return xidx, yidx, zidx, d
+
+    def dump(self, file=None,
+             xidx=(), yidx=(), zidx=(),
+             indexed=False, opt_debug=False, **kwargs):
+
+        np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
+
+        xidx, yidx, zidx, d = self.select_data_range(xidx, yidx, zidx)
+        liner = "="*80
+        if (opt_debug):
+            print("dbg:current_data:", file=file)
+            print("  flags:", file=file)
+            print(d.flags, file=file)
+            print("  dtype:", d.dtype, file=file)
+            print("  size,itemsize:",
+                  d.size, d.itemsize, file=file)
+            print("  xrange:", xidx, file=file)
+            print("  yrange:", yidx, file=file)
+            print("  zrange:", zidx, file=file)
+            print("  ndim, shape, strides:",
+                  d.ndim, d.shape,
+                  d.strides, file=file)
+        print(liner)
+        if (len(kwargs) > 0):
+            np.set_printoptions(**kwargs)
+
+        if (indexed):
+            print("#%8s %8s %8s %20s" % ("xindex", "yindex", "zindex", "data"),
+                  file=file)
+            for k in range(zidx[1]-zidx[0]):
+                for j in range(yidx[1]-yidx[0]):
+                    for i in range(xidx[1]-xidx[0]):
+                        print(" %8d %8d %8d %20f"
+                              % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]),
+                              file=file)
+        else:
+            print(d, file=file)
+        print('='*len(liner), file=file)
+
+        return None
 
 
 ######################################################################
@@ -718,69 +774,12 @@ class GT3File:
         self.is_after_header = False
         return None
 
-    def select_data_range(self, xidx=(), yidx=(), zidx=()):
-        """
-        Select data index range from current_data and return it.
-
-        Index range is specified by a single integer to slice at it,
-        or two element tuple or list to specify range.
-        """
-        # print('dbg:', xidx, yidx, zidx)
-        d = self.current_data
-        if (len(xidx) == 0):
-            xidx = [0, d.shape[2]]
-        if (len(yidx) == 0):
-            yidx = [0, d.shape[1]]
-        if (len(zidx) == 0):
-            zidx = [0, d.shape[0]]
-
-        d = d[zidx[0]:zidx[1], yidx[0]:yidx[1], xidx[0]:xidx[1]]
-        return xidx, yidx, zidx, d
-
     def dump_current_header(self):
         self.current_header.dump()
         return None
 
-    def dump_current_data(self, file=None,
-                          xidx=(), yidx=(), zidx=(),
-                          indexed=False, **kwargs):
-        np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
-
-        xidx, yidx, zidx, d = self.select_data_range(xidx, yidx, zidx)
-
-        liner = '====== %s: data #%d ' \
-                % (self.name, self.current_header.number)
-        liner += "="*(80-len(liner))
-        if (self.opt_debug):
-            print("dbg:current_data:", file=file)
-            print("  flags:", file=file)
-            print(d.flags, file=file)
-            print("  dtype:", d.dtype, file=file)
-            print("  size,itemsize:",
-                  d.size, d.itemsize, file=file)
-            print("  xrange:", xidx, file=file)
-            print("  yrange:", yidx, file=file)
-            print("  zrange:", zidx, file=file)
-            print("  ndim, shape, strides:",
-                  d.ndim, d.shape,
-                  d.strides, file=file)
-        print(liner)
-        if (len(kwargs) > 0):
-            np.set_printoptions(**kwargs)
-
-        if (indexed):
-            print("#%8s %8s %8s %20s" % ("xindex", "yindex", "zindex", "data"),
-                  file=file)
-            for k in range(zidx[1]-zidx[0]):
-                for j in range(yidx[1]-yidx[0]):
-                    for i in range(xidx[1]-xidx[0]):
-                        print(" %8d %8d %8d %20f"
-                              % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]),
-                              file=file)
-        else:
-            print(d, file=file)
-        print('='*len(liner), file=file)
-
+    def dump_current_data(self, **kwargs):
+        self.current_data.dump(**kwargs)
         return None
 
     def read_nth_data(self, num):
@@ -892,7 +891,6 @@ class GT3File:
 
         return result
 
-
     def read(self):
         """
         Iterator Generator
@@ -903,6 +901,7 @@ class GT3File:
                 return
             self.read_one_data()
             yield self.current_header, self.current_data
+
 
 ###############################################################################
 # Axis for GTOOL3
@@ -980,4 +979,3 @@ class GT3Axis():
         print(self.data, file=file)
         print('='*len(liner), file=file)
         pass
-
