@@ -122,7 +122,7 @@ with GT3File(opt.file) as f:
                 f.dump_current_data(xidx=opt.xidx,
                                     yidx=opt.yidx,
                                     zidx=opt.zidx,
-                                    indexed=opt.indexed)
+                                    indexed=opt.indexed, opt_debug=f.opt_debug)
             else:
                 f.skip_one_data()
 
