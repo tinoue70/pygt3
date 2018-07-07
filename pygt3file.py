@@ -466,6 +466,12 @@ class GT3Header:
         return hdarray
 
 
+class GT3Data(np.ndarray):
+    """ GT3Data class"""
+    pass
+
+
+
 ######################################################################
 class GT3File:
     """ Class for abstracting GTOOL3 file."""
@@ -626,7 +632,7 @@ class GT3File:
             if (chunk["h"] != chunk["t"]):
                 raise IOError
             self.current_data = np.array(
-                chunk["b"][0]).reshape(self.current_header.shape)
+                chunk["b"][0]).reshape(self.current_header.shape).view(GT3Data)
         elif (self.current_header.dfmt[:3] == 'UR4'):
             dt = np.dtype([
                 ("h", ">i4"),
@@ -636,7 +642,7 @@ class GT3File:
             if (chunk["h"] != chunk["t"]):
                 raise IOError
             self.current_data = np.array(
-                chunk["b"][0]).reshape(self.current_header.shape)
+                chunk["b"][0]).reshape(self.current_header.shape).view(GT3Data)
         elif (self.current_header.dfmt[:3] == 'URC'):
             raise NotImplementedError
         elif (self.current_header.dfmt[:3] == 'URY'):
@@ -678,7 +684,7 @@ class GT3File:
                         self.current_data[k, i] = (
                             coeffs[k, 0] + unpacked[i] * coeffs[k, 1])
             self.current_data = self.current_data.reshape(
-                self.current_header.shape)
+                self.current_header.shape).view(GT3Data)
         elif (self.current_header.dfmt[:3] == 'MRY'):
             raise NotImplementedError
 
@@ -799,7 +805,7 @@ class GT3File:
                 if (self.opt_debug):
                     print("dbg: data #%d found." % num)
                 h = self.current_header
-                d = self.current_data
+                d = self.current_data.view(GT3Data)
                 break
             else:
                 self.skip_one_data()
@@ -828,7 +834,7 @@ class GT3File:
             print("in header:", self.current_header.shape)
             print("in data  :", d.shape)
             sys.exit(1)
-        self.current_data = d
+        self.current_data = d.view(GT3Data)
         pass
 
     def write_one_data(self):
