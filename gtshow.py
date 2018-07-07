@@ -107,23 +107,15 @@ with GT3File(opt.file) as f:
         f.show_table()
         sys.exit(0)
 
-    while True:
-        f.read_one_header()
-        if (f.is_eof):
-            break
+    for h, d in f.read():
         if (opt.all or f.current_header.number in opt.numbers):
-            f.dump_current_header()
-
+            h.dump()
         if (opt.header_only):
-            f.skip_one_data()
-        else:
-            if (opt.all or f.current_header.number in opt.numbers):
-                f.read_one_data()
-                f.dump_current_data(xidx=opt.xidx,
-                                    yidx=opt.yidx,
-                                    zidx=opt.zidx,
-                                    indexed=opt.indexed, opt_debug=f.opt_debug)
-            else:
-                f.skip_one_data()
+            pass
+        elif (opt.all or h.number in opt.numbers):
+            d.dump(xidx=opt.xidx,
+                   yidx=opt.yidx,
+                   zidx=opt.zidx,
+                   indexed=opt.indexed, opt_debug=opt.debug)
 
 sys.exit(0)
