@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 import numpy as np
-import io
+from io import StringIO
 import unittest
 from contextlib import redirect_stdout
 from pygt3file import GT3Data
@@ -61,7 +61,7 @@ class TestGT3Data(unittest.TestCase):
         # d.name = 'test'
         # d.number = 2
         indexed = False
-        f = io.StringIO()
+        f = StringIO()
         with redirect_stdout(f):
             d.dump(indexed=indexed)
         result = f.getvalue()
@@ -87,7 +87,7 @@ class TestGT3Data(unittest.TestCase):
         d.name = 'test'
         d.number = 2
         indexed = False
-        f = io.StringIO()
+        f = StringIO()
         with redirect_stdout(f):
             d.dump(indexed=indexed)
         result = f.getvalue()
@@ -125,7 +125,7 @@ class TestGT3Data(unittest.TestCase):
         # d.name = 'test'
         # d.number = 2
         indexed = True
-        f = io.StringIO()
+        f = StringIO()
         with redirect_stdout(f):
             d.dump(indexed=indexed)
         result = f.getvalue()
@@ -163,7 +163,7 @@ class TestGT3Data(unittest.TestCase):
         d.name = 'test'
         d.number = 2
         indexed = True
-        f = io.StringIO()
+        f = StringIO()
         with redirect_stdout(f):
             d.dump(indexed=indexed)
         result = f.getvalue()
