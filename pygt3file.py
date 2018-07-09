@@ -466,6 +466,123 @@ class GT3Header:
         return hdarray
 
 
+class GT3Data(np.ndarray):
+    """GT3Data class.
+
+    Implemented as a subclass of numpy.ndarray, adding some attributes
+    and methods.
+
+    """
+
+    def __new__(subtype, shape, dtype=float, buffer=None, offset=0,
+                strides=None, order=None, name=None, number=None):
+        # Borrowed from
+        # https://docs.scipy.org/doc/numpy/user/basics.subclassing.html
+        # Create the ndarray instance of our type, given the usual
+        # ndarray input arguments.  This will call the standard
+        # ndarray constructor, but return an object of our type.  It
+        # also triggers a call to GT3Data.__array_finalize__
+        obj = super(GT3Data, subtype).__new__(subtype, shape, dtype,
+                                              buffer, offset, strides,
+                                              order)
+        # set the new 'name' attribute to the value passed
+        obj.name = name
+        obj.number = number
+        # Finally, we must return the newly created object:
+        return obj
+
+    def __array_finalize__(self, obj):
+        # ``self`` is a new object resulting from
+        # ndarray.__new__(GT3Data, ...), therefore it only has
+        # attributes that the ndarray.__new__ constructor gave it -
+        # i.e. those of a standard ndarray.
+        #
+        # We could have got to the ndarray.__new__ call in 3 ways:
+        # From an explicit constructor - e.g. GT3Data():
+        #    obj is None
+        #    (we're in the middle of the GT3Data.__new__
+        #    constructor, and self.info will be set when we return to
+        #    GT3Data.__new__)
+        if obj is None: return
+        # From view casting - e.g arr.view(GT3Data):
+        #    obj is arr
+        #    (type(obj) can be GT3Data)
+        # From new-from-template - e.g infoarr[:3]
+        #    type(obj) is GT3Data
+        #
+        # Note that it is here, rather than in the __new__ method,
+        # that we set the default value for 'info', because this
+        # method sees all creation of default objects - with the
+        # GT3Data.__new__ constructor, but also with
+        # arr.view(GT3Data).
+        self.name = getattr(obj, 'name', None)
+        self.number = getattr(obj, 'number', None)
+        # We do not need to return anything
+
+    def select_data_range(self, xidx=(), yidx=(), zidx=()):
+        """
+        Select data index range from current_data and return it.
+
+        Index range is specified by a single integer to slice at it,
+        or two element tuple or list to specify range.
+        """
+        # print('dbg:', xidx, yidx, zidx)
+        if (len(xidx) == 0):
+            xidx = [0, self.shape[2]]
+        if (len(yidx) == 0):
+            yidx = [0, self.shape[1]]
+        if (len(zidx) == 0):
+            zidx = [0, self.shape[0]]
+
+        d = self[zidx[0]:zidx[1], yidx[0]:yidx[1], xidx[0]:xidx[1]]
+        return xidx, yidx, zidx, d
+
+    def dump(self, file=None,
+             xidx=(), yidx=(), zidx=(),
+             indexed=False, opt_debug=False, **kwargs):
+
+        np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
+
+        xidx, yidx, zidx, d = self.select_data_range(xidx, yidx, zidx)
+        liner = '======'
+        if (self.name):
+            liner += '%s:' % self.name
+        if (self.number):
+            liner += '#%d' % self.number
+        liner += "="*(80-len(liner))
+        if (opt_debug):
+            print("dbg:current_data:", file=file)
+            print("  flags:", file=file)
+            print(d.flags, file=file)
+            print("  dtype:", d.dtype, file=file)
+            print("  size,itemsize:",
+                  d.size, d.itemsize, file=file)
+            print("  xrange:", xidx, file=file)
+            print("  yrange:", yidx, file=file)
+            print("  zrange:", zidx, file=file)
+            print("  ndim, shape, strides:",
+                  d.ndim, d.shape,
+                  d.strides, file=file)
+        print(liner)
+        if (len(kwargs) > 0):
+            np.set_printoptions(**kwargs)
+
+        if (indexed):
+            print("#%8s %8s %8s %20s" % ("xindex", "yindex", "zindex", "data"),
+                  file=file)
+            for k in range(zidx[1]-zidx[0]):
+                for j in range(yidx[1]-yidx[0]):
+                    for i in range(xidx[1]-xidx[0]):
+                        print(" %8d %8d %8d %20f"
+                              % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]),
+                              file=file)
+        else:
+            print(d, file=file)
+        print('='*len(liner), file=file)
+
+        return None
+
+
 ######################################################################
 class GT3File:
     """ Class for abstracting GTOOL3 file."""
@@ -626,7 +743,7 @@ class GT3File:
             if (chunk["h"] != chunk["t"]):
                 raise IOError
             self.current_data = np.array(
-                chunk["b"][0]).reshape(self.current_header.shape)
+                chunk["b"][0]).reshape(self.current_header.shape).view(GT3Data)
         elif (self.current_header.dfmt[:3] == 'UR4'):
             dt = np.dtype([
                 ("h", ">i4"),
@@ -636,7 +753,7 @@ class GT3File:
             if (chunk["h"] != chunk["t"]):
                 raise IOError
             self.current_data = np.array(
-                chunk["b"][0]).reshape(self.current_header.shape)
+                chunk["b"][0]).reshape(self.current_header.shape).view(GT3Data)
         elif (self.current_header.dfmt[:3] == 'URC'):
             raise NotImplementedError
         elif (self.current_header.dfmt[:3] == 'URY'):
@@ -678,7 +795,7 @@ class GT3File:
                         self.current_data[k, i] = (
                             coeffs[k, 0] + unpacked[i] * coeffs[k, 1])
             self.current_data = self.current_data.reshape(
-                self.current_header.shape)
+                self.current_header.shape).view(GT3Data)
         elif (self.current_header.dfmt[:3] == 'MRY'):
             raise NotImplementedError
 
@@ -712,69 +829,12 @@ class GT3File:
         self.is_after_header = False
         return None
 
-    def select_data_range(self, xidx=(), yidx=(), zidx=()):
-        """
-        Select data index range from current_data and return it.
-
-        Index range is specified by a single integer to slice at it,
-        or two element tuple or list to specify range.
-        """
-        # print('dbg:', xidx, yidx, zidx)
-        d = self.current_data
-        if (len(xidx) == 0):
-            xidx = [0, d.shape[2]]
-        if (len(yidx) == 0):
-            yidx = [0, d.shape[1]]
-        if (len(zidx) == 0):
-            zidx = [0, d.shape[0]]
-
-        d = d[zidx[0]:zidx[1], yidx[0]:yidx[1], xidx[0]:xidx[1]]
-        return xidx, yidx, zidx, d
-
     def dump_current_header(self):
         self.current_header.dump()
         return None
 
-    def dump_current_data(self, file=None,
-                          xidx=(), yidx=(), zidx=(),
-                          indexed=False, **kwargs):
-        np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
-
-        xidx, yidx, zidx, d = self.select_data_range(xidx, yidx, zidx)
-
-        liner = '====== %s: data #%d ' \
-                % (self.name, self.current_header.number)
-        liner += "="*(80-len(liner))
-        if (self.opt_debug):
-            print("dbg:current_data:", file=file)
-            print("  flags:", file=file)
-            print(d.flags, file=file)
-            print("  dtype:", d.dtype, file=file)
-            print("  size,itemsize:",
-                  d.size, d.itemsize, file=file)
-            print("  xrange:", xidx, file=file)
-            print("  yrange:", yidx, file=file)
-            print("  zrange:", zidx, file=file)
-            print("  ndim, shape, strides:",
-                  d.ndim, d.shape,
-                  d.strides, file=file)
-        print(liner)
-        if (len(kwargs) > 0):
-            np.set_printoptions(**kwargs)
-
-        if (indexed):
-            print("#%8s %8s %8s %20s" % ("xindex", "yindex", "zindex", "data"),
-                  file=file)
-            for k in range(zidx[1]-zidx[0]):
-                for j in range(yidx[1]-yidx[0]):
-                    for i in range(xidx[1]-xidx[0]):
-                        print(" %8d %8d %8d %20f"
-                              % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]),
-                              file=file)
-        else:
-            print(d, file=file)
-        print('='*len(liner), file=file)
-
+    def dump_current_data(self, **kwargs):
+        self.current_data.dump(**kwargs)
         return None
 
     def read_nth_data(self, num):
@@ -799,7 +859,7 @@ class GT3File:
                 if (self.opt_debug):
                     print("dbg: data #%d found." % num)
                 h = self.current_header
-                d = self.current_data
+                d = self.current_data.view(GT3Data)
                 break
             else:
                 self.skip_one_data()
@@ -828,7 +888,7 @@ class GT3File:
             print("in header:", self.current_header.shape)
             print("in data  :", d.shape)
             sys.exit(1)
-        self.current_data = d
+        self.current_data = d.view(GT3Data)
         pass
 
     def write_one_data(self):
@@ -886,8 +946,7 @@ class GT3File:
 
         return result
 
-
-    def read(self):
+    def read(self,skip_data=False):
         """
         Iterator Generator
         """
@@ -895,8 +954,13 @@ class GT3File:
             self.read_one_header()
             if (self.is_eof):
                 return
-            self.read_one_data()
+            if (skip_data):
+                self.skip_one_data()
+                self.current_data = None
+            else:
+                self.read_one_data()
             yield self.current_header, self.current_data
+
 
 ###############################################################################
 # Axis for GTOOL3
@@ -974,4 +1038,3 @@ class GT3Axis():
         print(self.data, file=file)
         print('='*len(liner), file=file)
         pass
-
