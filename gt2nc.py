@@ -140,7 +140,7 @@ if (zax.file is None):
     sys.exit(1)
 if (opt.debug):
     zax.dump()
-if (zax.title=='pressure' and zax.unit==''):
+if (zax.title == 'pressure' and zax.unit == ''):
     zax.unit = 'hPa'
 # if len(zax)=1, omit zax from ncfile.
 is3DVar = (zax.size > 2)
@@ -173,11 +173,10 @@ tvar.units = 'seconds since 1970-01-01 00:00:00'
 
 if (is3DVar):
     dimensions = (tdim.name, zdim.name, ydim.name, xdim.name)
-    # chunksizes = (1, zax.size, yax.size, xax.size)
     chunksizes = (1, 1, yax.size, xax.size)
 else:
     dimensions = (tdim.name, ydim.name, xdim.name)
-    chunksizes=(1, yax.size, xax.size)
+    chunksizes = (1, yax.size, xax.size)
 
 
 ncvar = nf.createVariable(
