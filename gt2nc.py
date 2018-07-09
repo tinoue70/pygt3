@@ -15,10 +15,12 @@ class A:
     pass
 
 
+description = 'Convert single variable gt3 file to netCDF4 file.'
+
 ###############################################################################
 # Here We Go
 ###############################################################################
-parser = argparse.ArgumentParser(description='Plot one data in gt3file')
+parser = argparse.ArgumentParser(description=description)
 
 parser.add_argument(
     '-d', '--debug', help='debug output',
@@ -26,14 +28,10 @@ parser.add_argument(
 parser.add_argument(
     '-v', '--verbose', help='verbose output',
     action='store_true')
+
 parser.add_argument(
     '-T', '--table', help='Show data table only.',
     action='store_true', dest='show_table')
-parser.add_argument(
-    'ifile', help='input gt3 file name.')
-parser.add_argument(
-    '-o', '--ofile', help='output netcdf file name.',
-    default='new.nc')
 parser.add_argument(
     '-n', '--number', help='data number to plot.',
     type=int, default=0, dest='data_number')
@@ -46,6 +44,12 @@ parser.add_argument(
 parser.add_argument(
     '-c', '--create_ctl', help='create ctl file for GrADS.',
     action='store_true', dest='create_ctl')
+
+parser.add_argument(
+    'ifile', help='input gt3 file name.')
+parser.add_argument(
+    '-o', '--ofile', help='output netcdf file name.',
+    default='new.nc')
 
 opt = A()
 parser.parse_args(namespace=opt)
