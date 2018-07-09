@@ -79,12 +79,12 @@ if (opt.show_table):
     gf.show_table()
     sys.exit(0)
 
+# for safety
 if (gf.num_of_items > 1):
     print('Multi items is not implemented yet, sorry')
     raise NotImplementedError
 item = gf.table['item'].unique()[0]
 
-# for safety
 if (any([gf.table['aitm1'].nunique() > 1,
          gf.table['aitm2'].nunique() > 1,
          gf.table['aitm3'].nunique() > 1])):
@@ -120,26 +120,30 @@ else:
     sys.exit(1)
 
 xax = GT3Axis(aitm1, opt.axdir)
-if (xax is None):
+if (xax.file is None):
     sys.exit(1)
-if (opt.debug):
-    xax.dump()
 if (xax.unit == 'deg'):
     xax.unit = 'degrees_east'
+if (opt.debug):
+    xax.dump()
 
 yax = GT3Axis(aitm2, opt.axdir)
-if (yax is None):
+if (yax.file is None):
     sys.exit(1)
-if (opt.debug):
-    yax.dump()
 if (yax.unit == 'deg'):
     yax.unit = 'degrees_north'
+if (opt.debug):
+    yax.dump()
 
 zax = GT3Axis(aitm3, opt.axdir)
-if (zax is None):
+if (zax.file is None):
     sys.exit(1)
 if (opt.debug):
     zax.dump()
+if (zax.title=='pressure' and zax.unit==''):
+    zax.unit = 'hPa'
+# if len(zax)=1, omit zax from ncfile.
+is3DVar = (zax.size > 2)
 
 ###############################################################################
 # netCDF4
@@ -147,41 +151,52 @@ if (opt.debug):
 nf = netCDF4.Dataset(opt.ofile, mode='w')
 
 xdim = nf.createDimension(xax.title, xax.size)
-ydim = nf.createDimension(yax.title, yax.size)
-zdim = nf.createDimension(zax.title, zax.size)
-tdim = nf.createDimension('time', None)  # unlimited axis
-
 xvar = nf.createVariable(xdim.name, np.float32, (xdim.name,))
 xvar.long_name = xdim.name
 xvar.units = xax.unit
 
+ydim = nf.createDimension(yax.title, yax.size)
 yvar = nf.createVariable(ydim.name, np.float32, (ydim.name,))
 yvar.long_name = ydim.name
 yvar.units = yax.unit
 
-zvar = nf.createVariable(zdim.name, np.float32, (zdim.name,))
-zvar.long_name = zdim.name
-zvar.units = zax.unit
+if (is3DVar):
+    zdim = nf.createDimension(zax.title, zax.size)
+    zvar = nf.createVariable(zdim.name, np.float32, (zdim.name,))
+    zvar.long_name = zdim.name
+    zvar.units = zax.unit
 
+tdim = nf.createDimension('time', None)  # unlimited axis
 tvar = nf.createVariable('time', np.float64, ('time',))
 tvar.long_name = 'time'
 tvar.units = 'seconds since 1970-01-01 00:00:00'
 
+if (is3DVar):
+    dimensions = (tdim.name, zdim.name, ydim.name, xdim.name)
+    # chunksizes = (1, zax.size, yax.size, xax.size)
+    chunksizes = (1, 1, yax.size, xax.size)
+else:
+    dimensions = (tdim.name, ydim.name, xdim.name)
+    chunksizes=(1, yax.size, xax.size)
+
+
 ncvar = nf.createVariable(
-    item,
-    dtype,
-    (tdim.name, zdim.name, ydim.name, xdim.name),
-    chunksizes=(1, zax.size, yax.size, xax.size),
-    zlib=opt.zlib)
+        item, dtype, dimensions, chunksizes=chunksizes,
+        zlib=opt.zlib)
 
 xvar[:] = xax.data
 yvar[:] = yax.data
-zvar[:] = zax.data
+
+if (is3DVar):
+    zvar[:] = zax.data
 
 tidx = 0
 
 for h, d in gf.read():
-    ncvar[tidx, :, :, :] = d[:, :, :]
+    if (is3DVar):
+        ncvar[tidx, :, :, :] = d[:, :, :]
+    else:
+        ncvar[tidx, :, :] = d[0, :, :]
     ts = h.date.astype(datetime.datetime)
     tvar[tidx] = netCDF4.date2num(ts, units=tvar.units)
     if (opt.verbose):
@@ -221,7 +236,8 @@ if (opt.create_ctl):
         cf.write(u'DTYPE netcdf\n')
         cf.write(u'XDEF %s\n' % xdim.name)
         cf.write(u'YDEF %s\n' % ydim.name)
-        cf.write(u'ZDEF %s\n' % zdim.name)
+        if (is3DVar):
+            cf.write(u'ZDEF %s\n' % zdim.name)
         cf.write(u'TDEF %s\n' % tdim.name)
         cf.write(u'VARS 1\n')
         cf.write(u'%s\n' % ncvar.name)
