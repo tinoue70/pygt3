@@ -595,6 +595,12 @@ class GT3File:
         self.mode = mode
         self.current_header = GT3Header()
         self.current_data = None
+        self.reset_attribs()
+
+        # self.packer = BitPacker()
+        return None
+
+    def reset_attribs(self):
         self.is_after_header = False
         self.is_eof = False
         self.num_of_data = -1
@@ -604,28 +610,24 @@ class GT3File:
         self.opt_debug = False
         self.opt_verbose = False
 
-        # self.packer = BitPacker()
-        return None
-
     def __enter__(self):
         return self
 
     def __exit__(self, type, value, traceback):
+        # print('GT3File.__exit__() called')
         self.close()
 
     def open(self, name, mode='rb'):
         """ re-open other file within the same instance. """
-        self.close()
+        self.f.close()
         self.f = open(name, mode)
         self.name = name
         self.mode = mode
-        self.is_after_header = False
-        self.is_eof = False
         return None
 
     def close(self):
         self.f.close()
-        self.name = ''
+        self.reset_attribs()
         return None
 
     def rewind(self):
@@ -697,7 +699,8 @@ class GT3File:
         """
 
         if (self.table is None):
-            self.scan()
+            print("Error: call scan() before show_table()")
+            sys.exit(1)
         liner = "="*5 + " Data table: "
         liner += "="*(80-len(liner))
         print(liner)
