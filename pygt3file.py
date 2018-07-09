@@ -637,9 +637,6 @@ class GT3File:
         self.current_header.number = -1
         return None
 
-    def dump(self):
-        raise NotImplementedError
-
     def scan(self):
         """
         Scan whole file and create data table.
