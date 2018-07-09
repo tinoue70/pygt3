@@ -78,6 +78,7 @@ if (opt.show_table):
 if (gf.num_of_items > 1):
     print('Multi items is not implemented yet, sorry')
     raise NotImplementedError
+item = gf.table['item'].unique()[0]
 
 # for safety
 if (any([gf.table['aitm1'].nunique() > 1,
@@ -86,28 +87,35 @@ if (any([gf.table['aitm1'].nunique() > 1,
     print('Multi axis is not supported.')
     raise NotImplementedError
 
+aitm1 = gf.table['aitm1'].unique()[0]
+aitm2 = gf.table['aitm2'].unique()[0]
+aitm3 = gf.table['aitm3'].unique()[0]
+
 # freezed below for a while.
 # if (opt.data_number not in range(gf.num_of_data)):
 #     print('Error: data number out of range: %d is not in range(%d)'
 #           % (opt.data_number, gf.num_of_data))
 #     sys.exit(1)
 
-gf.read_one_header()
-gf.read_one_data()
+if (gf.table['dfmt'].nunique() > 1):
+    print('Multi dfmt is not supported.')
+    raise NotImplementedError
 
-if (gf.current_header.dfmt == 'UR4'):
+dfmt = gf.table['dfmt'].unique()[0]
+
+if (dfmt == 'UR4'):
     dtype = 'f4'
-elif (gf.current_header.dfmt == 'UR8'):
+elif (dfmt == 'UR8'):
     dtype = 'f8'
-elif (gf.current_header.dfmt == 'URC'):
+elif (dfmt == 'URC'):
     dtype = 'f4'
-elif (gf.current_header.dfmt[:3] == 'URY'):
+elif (dfmt[:3] == 'URY'):
     dtype = 'f4'
 else:
-    print('Error: Unknown dfmt: %s' % gf.current_header.dfmt)
+    print('Error: Unknown dfmt: %s' % dfmt)
     sys.exit(1)
 
-xax = GT3Axis(gf.current_header.aitm1, opt.axdir)
+xax = GT3Axis(aitm1, opt.axdir)
 if (xax is None):
     sys.exit(1)
 if (opt.debug):
@@ -115,7 +123,7 @@ if (opt.debug):
 if (xax.unit == 'deg'):
     xax.unit = 'degrees_east'
 
-yax = GT3Axis(gf.current_header.aitm2, opt.axdir)
+yax = GT3Axis(aitm2, opt.axdir)
 if (yax is None):
     sys.exit(1)
 if (opt.debug):
@@ -123,7 +131,7 @@ if (opt.debug):
 if (yax.unit == 'deg'):
     yax.unit = 'degrees_north'
 
-zax = GT3Axis(gf.current_header.aitm3, opt.axdir)
+zax = GT3Axis(aitm3, opt.axdir)
 if (zax is None):
     sys.exit(1)
 if (opt.debug):
@@ -133,10 +141,6 @@ if (opt.debug):
 # netCDF4
 ###############################################################################
 nf = netCDF4.Dataset(opt.ofile, mode='w')
-nf.title = gf.current_header.titl
-# nf.Conventions = 'CF-1.4'
-nf.history = 'Converted at  %s by pygt3file library.' \
-             % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 xdim = nf.createDimension(xax.title, xax.size)
 ydim = nf.createDimension(yax.title, yax.size)
@@ -160,37 +164,33 @@ tvar.long_name = 'time'
 tvar.units = 'seconds since 1970-01-01 00:00:00'
 
 ncvar = nf.createVariable(
-    gf.current_header.item,
+    item,
     dtype,
     (tdim.name, zdim.name, ydim.name, xdim.name),
     chunksizes=(1, zax.size, yax.size, xax.size),
     zlib=opt.zlib)
-ncvar.long_name = gf.current_header.titl
-ncvar.units = gf.current_header.unit
 
 xvar[:] = xax.data
 yvar[:] = yax.data
 zvar[:] = zax.data
 
 tidx = 0
-ncvar[tidx, :, :, :] = gf.current_data
-ts = gf.current_header.date.astype(datetime.datetime)
-tvar[tidx] = netCDF4.date2num(ts, units=tvar.units)
-if (opt.verbose):
-    print('Item: %s' % gf.current_header.item)
-    print('Converted tidx=%d' % tidx)
 
-while True:
-    gf.read_one_header()
-    if (gf.is_eof):
-        break
-    gf.read_one_data()
-    tidx += 1
-    ncvar[tidx, :, :, :] = gf.current_data
-    ts = gf.current_header.date.astype(datetime.datetime)
+for h, d in gf.read():
+    ncvar[tidx, :, :, :] = d[:, :, :]
+    ts = h.date.astype(datetime.datetime)
     tvar[tidx] = netCDF4.date2num(ts, units=tvar.units)
     if (opt.verbose):
+        print('Item: %s' % gf.current_header.item)
         print('Converted tidx=%d' % tidx)
+
+    nf.title = h.titl
+    # nf.Conventions = 'CF-1.4'
+    nf.history = 'Converted at  %s by pygt3file library.' \
+                 % datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    ncvar.long_name = h.titl
+    ncvar.units = h.unit
+    tidx += 1
 
 gf.close()
 
@@ -223,6 +223,8 @@ if (opt.create_ctl):
         cf.write(u'%s\n' % ncvar.name)
         cf.write(u'ENDVARS\n')
     print('Created %s.' % ctlfile)
+
+
 nf.close()
 
 sys.exit(0)
