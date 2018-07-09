@@ -649,21 +649,17 @@ class GT3File:
         tbl = []
         self.num_of_data = 0
         self.rewind()
-        while True:
-            self.read_one_header()
-            if (self.is_eof):
-                break
-            self.skip_one_data()
-            self.num_of_data += 1
-            tbl.append([self.current_header.item,
-                        int(str(self.current_header.time).split()[0]),
-                        self.current_header.tdur,
-                        self.current_header.utim,
-                        self.current_header.dfmt,
-                        self.current_header.date,
-                        self.current_header.aitm1,
-                        self.current_header.aitm2,
-                        self.current_header.aitm3])
+        for h, d in self.read(skip_data=True):
+            # self.num_of_data += 1
+            tbl.append([h.item,
+                        int(str(h.time).split()[0]),
+                        h.tdur,
+                        h.utim,
+                        h.dfmt,
+                        h.date,
+                        h.aitm1,
+                        h.aitm2,
+                        h.aitm3])
         self.rewind()
         self.table = pd.DataFrame(tbl)
         self.table.columns = ['item',
@@ -675,10 +671,7 @@ class GT3File:
                               'aitm1',
                               'aitm2',
                               'aitm3']
-        # self.num_of_times = self.table.pivot_table(
-        #     index='time', aggfunc=[len]).shape[0]
-        # self.num_of_items = self.table.pivot_table(
-        #     index='item', aggfunc=[len]).shape[0]
+        self.num_of_data = len(self.table.index)
         self.num_of_times = self.table['time'].nunique()
         self.num_of_items = self.table['item'].nunique()
 
