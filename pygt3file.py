@@ -467,7 +467,57 @@ class GT3Header:
 
 
 class GT3Data(np.ndarray):
-    """ GT3Data class"""
+    """GT3Data class.
+
+    Implemented as a subclass of numpy.ndarray, adding some attributes
+    and methods.
+
+    """
+
+    def __new__(subtype, shape, dtype=float, buffer=None, offset=0,
+                strides=None, order=None, name=None, number=None):
+        # Borrowed from
+        # https://docs.scipy.org/doc/numpy/user/basics.subclassing.html
+        # Create the ndarray instance of our type, given the usual
+        # ndarray input arguments.  This will call the standard
+        # ndarray constructor, but return an object of our type.  It
+        # also triggers a call to GT3Data.__array_finalize__
+        obj = super(GT3Data, subtype).__new__(subtype, shape, dtype,
+                                              buffer, offset, strides,
+                                              order)
+        # set the new 'name' attribute to the value passed
+        obj.name = name
+        obj.number = number
+        # Finally, we must return the newly created object:
+        return obj
+
+    def __array_finalize__(self, obj):
+        # ``self`` is a new object resulting from
+        # ndarray.__new__(GT3Data, ...), therefore it only has
+        # attributes that the ndarray.__new__ constructor gave it -
+        # i.e. those of a standard ndarray.
+        #
+        # We could have got to the ndarray.__new__ call in 3 ways:
+        # From an explicit constructor - e.g. GT3Data():
+        #    obj is None
+        #    (we're in the middle of the GT3Data.__new__
+        #    constructor, and self.info will be set when we return to
+        #    GT3Data.__new__)
+        if obj is None: return
+        # From view casting - e.g arr.view(GT3Data):
+        #    obj is arr
+        #    (type(obj) can be GT3Data)
+        # From new-from-template - e.g infoarr[:3]
+        #    type(obj) is GT3Data
+        #
+        # Note that it is here, rather than in the __new__ method,
+        # that we set the default value for 'info', because this
+        # method sees all creation of default objects - with the
+        # GT3Data.__new__ constructor, but also with
+        # arr.view(GT3Data).
+        self.name = getattr(obj, 'name', None)
+        self.number = getattr(obj, 'number', None)
+        # We do not need to return anything
 
     def select_data_range(self, xidx=(), yidx=(), zidx=()):
         """
@@ -494,7 +544,12 @@ class GT3Data(np.ndarray):
         np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
 
         xidx, yidx, zidx, d = self.select_data_range(xidx, yidx, zidx)
-        liner = "="*80
+        liner = '======'
+        if (self.name):
+            liner += '%s:' % self.name
+        if (self.number):
+            liner += '#%d' % self.number
+        liner += "="*(80-len(liner))
         if (opt_debug):
             print("dbg:current_data:", file=file)
             print("  flags:", file=file)
