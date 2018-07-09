@@ -946,7 +946,7 @@ class GT3File:
 
         return result
 
-    def read(self):
+    def read(self,skip_data=False):
         """
         Iterator Generator
         """
@@ -954,7 +954,11 @@ class GT3File:
             self.read_one_header()
             if (self.is_eof):
                 return
-            self.read_one_data()
+            if (skip_data):
+                self.skip_one_data()
+                self.current_data = None
+            else:
+                self.read_one_data()
             yield self.current_header, self.current_data
 
 
