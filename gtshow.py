@@ -107,7 +107,7 @@ with GT3File(opt.file) as f:
         f.show_table()
         sys.exit(0)
 
-    for h, d in f.read():
+    for h, d in f.read(skip_data=opt.header_only):
         if (opt.all or f.current_header.number in opt.numbers):
             h.dump()
         if (opt.header_only):
