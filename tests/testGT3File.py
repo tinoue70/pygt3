@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
 import numpy as np
+import pandas as pd
 import unittest
 import tempfile
 from io import StringIO
@@ -55,7 +56,7 @@ class TestGT3File(unittest.TestCase):
                 f2.write_one_header()
                 f2.write_one_data()
 
-    def test00_open(self):
+    def test_open_00(self):
         """ Test for opening not exist file. """
         with self.assertRaises(OSError):
             filename = 'prcpr'  # not exist
@@ -63,7 +64,7 @@ class TestGT3File(unittest.TestCase):
             with GT3File(filename, mode) as f:
                 pass
 
-    def test01_open(self):
+    def test_open_01(self):
         """ Test for invalid mode."""
         with self.assertRaises(InvalidArgumentError):
             filename = 'prcpx'
@@ -71,7 +72,37 @@ class TestGT3File(unittest.TestCase):
             with GT3File(filename, mode) as f:
                 pass
 
-    def test10_show_table(self):
+    def test_scan_00(self):
+        expect1 = (12, 12, 1)
+        expect2 = pd.Series([
+            17693439, 17693442, 17693445, 17693448,
+            17693451, 17693454, 17693457, 17693460,
+            17693463, 17693466, 17693469, 17693472])
+
+        with GT3File('test00') as f:
+            f.scan()
+            result1 = (f.num_of_data,f.num_of_times,f.num_of_items)
+            result2 = f.table.iloc[:, 1]  # date
+
+        self.assertEqual(result1, expect1)
+        self.assertEqual((result2-expect2).mean(),0.0)
+
+    def test_scan_01(self):
+        expect1 = (8, 1, 8)
+        expect2 = ["hoge00", "hoge01", "hoge02", "hoge03",
+                   "hoge04", "hoge05", "hoge06", "hoge07"]
+
+        with GT3File('test01') as f:
+            f.scan()
+            result1 = (f.num_of_data,f.num_of_times,f.num_of_items)
+            result2 = f.table.iloc[:, 0].values.tolist()
+
+        self.assertEqual(result1, expect1)
+        self.assertEqual(result2, expect2)
+
+
+
+    def test_show_table_00(self):
         """ Test show_table() to a stdout. """
         expect = ("""\
 ===== Data table: ==============================================================
@@ -98,7 +129,7 @@ class TestGT3File(unittest.TestCase):
                     result = o.getvalue()
         self.assertMultiLineEqual(result, expect)
 
-    def test20_read_one_header(self):
+    def test_read_one_header_00(self):
         """Test for read_one_header() and skip_one_data()."""
         expect = u"""\
 2018-06-16T15 17693439 hours
@@ -121,7 +152,7 @@ class TestGT3File(unittest.TestCase):
                 result = o.getvalue()
         self.assertMultiLineEqual(result,expect)
 
-    def test30_read_one_data(self):
+    def test_read_one_data_00(self):
         """Test for read_one_data()."""
         expect = """
   C_CONTIGUOUS : True
@@ -152,7 +183,7 @@ class TestGT3File(unittest.TestCase):
                 result = o.getvalue()
         self.assertMultiLineEqual(result,expect)
 
-    def test40_read(self):
+    def test_read_00(self):
         """ Test for read(). """
         expect = """\
 2018-06-16T15 0.0
@@ -176,7 +207,7 @@ class TestGT3File(unittest.TestCase):
                 result = o.getvalue()
         self.assertMultiLineEqual(result, expect)
 
-    def test50_extract_t_axis(self):
+    def test_extract_t_axis_00(self):
         """Test for extract_t_axis() with multi-items file."""
         ts = np.array([17693439])
         expect = {'values': ts, 'unit': 'hours'}
@@ -187,7 +218,7 @@ class TestGT3File(unittest.TestCase):
         self.assertEqual(tuple(result['values']), tuple(expect['values']))
         self.assertEqual(result['unit'], expect['unit'])
 
-    def test51_extract_t_axis(self):
+    def test_extract_t_axis_01(self):
         """Test for extract_t_axis() with single-item file."""
         ts = np.array(
             [17693439, 17693442, 17693445, 17693448,
