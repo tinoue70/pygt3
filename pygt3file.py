@@ -567,14 +567,12 @@ class GT3Data(np.ndarray):
             np.set_printoptions(**kwargs)
 
         if (indexed):
-            print("#%8s %8s %8s %20s" % ("xindex", "yindex", "zindex", "data"),
-                  file=file)
+            print("#%8s %8s %8s %20s" % ("xindex", "yindex", "zindex", "data"))
             for k in range(zidx[1]-zidx[0]):
                 for j in range(yidx[1]-yidx[0]):
                     for i in range(xidx[1]-xidx[0]):
                         print(" %8d %8d %8d %20f"
-                              % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]),
-                              file=file)
+                              % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]))
         else:
             print(d)
         print('='*len(liner))
