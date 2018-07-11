@@ -3,8 +3,10 @@
 from __future__ import print_function
 import numpy as np
 import unittest
-import tempfile
+
 from collections import deque
+from io import StringIO
+from contextlib import redirect_stdout
 
 from pygt3file import GT3Header
 
@@ -37,59 +39,60 @@ class TestGT3Header(unittest.TestCase):
 
     def test_init_dump_00(self):
         """ __init__() and dump() """
-        with tempfile.TemporaryFile('w+') as f:
-            header = GT3Header(fname='test')
-            header.dump(file=f)
-            f.seek(0)
-            result = f.read()
-        expected = (
-            "====== test: header #-1 ========================================================\n"
-            "dset : \n"
-            "item : []: \n"
-            "date : None(None) with 0[sec]\n"
-            "axis : [0:0]\n"
-            "cycl : False\n"
-            "dfmt : UR4\n"
-            "miss : -999.0\n"
-            "size : 1\n"
-            "edit : []\n"
-            "ettl : []\n"
-            "memo : []\n"
-            "cdate: %s by pygt3 library\n"
-            "mdate: %s by pygt3 library\n"
-            "isize,jsize,ksize: 1, 1, 1\n"
-            "================================================================================\n"
-            % (header.cdate, header.mdate))
+        header = GT3Header(fname='test')
+        with StringIO() as o:
+            with redirect_stdout(o):
+                header.dump()
+            result = o.getvalue()
+        #  Do not remove trailing whitespace from this!!
+        expect = ("""\
+====== test: header #-1 ========================================================
+dset : 
+item : []: 
+date : None(None) with 0[sec]
+axis : [0:0]
+cycl : False
+dfmt : UR4
+miss : -999.0
+size : 1
+edit : []
+ettl : []
+memo : []
+cdate: %s by pygt3 library
+mdate: %s by pygt3 library
+isize,jsize,ksize: 1, 1, 1
+================================================================================
+""" % (header.cdate, header.mdate))
 
-        self.assertMultiLineEqual(result, expected)
+        self.assertMultiLineEqual(result, expect)
 
     def test_set_from_hdarray_01(self):
         """ set_from_hdarray() and dump() """
         header = GT3Header(fname='test')
         header.set_from_hdarray(self.orig_hdarray, fname='test')
-        with tempfile.TemporaryFile('w+') as f:
-            header.dump(file=f)
-            f.seek(0)
-            result = f.read()
-        expected = (
-            "====== test: header #-1 ========================================================\n"
-            "dset : test\n"
-            "item : hoge[-]: testdata for TestGT3Header.pack(\n"
-            "date : 2018-06-16(737226) with 0[DAYS]\n"
-            "axis : GLON64[1:64] x GGLA32[1:32] x SFC1[1:1]\n"
-            "cycl : False\n"
-            "dfmt : UR4\n"
-            "miss : -999.0\n"
-            "size : 2048\n"
-            "edit : ['edit0', 'edit1', 'edit2', 'edit3', 'edit4', 'edit5', 'edit6', 'edit7']\n"
-            "ettl : ['etitle0', 'etitle1', 'etitle2', 'etitle3', 'etitle4', 'etitle5', 'etitle6', 'etitle7']\n"
-            "memo : ['memo0', 'memo1', 'memo2', 'memo3', 'memo4', 'memo5', 'memo6', 'memo7', 'memo8', 'memo9']\n"
-            "cdate: %s by pygt3 library\n"
-            "mdate: %s by pygt3 library\n"
-            "isize,jsize,ksize: 64, 32, 1\n"
-            "================================================================================\n"
-            % (header.cdate, header.mdate))
-        self.assertMultiLineEqual(result, expected)
+        with StringIO() as o:
+            with redirect_stdout(o):
+                header.dump()
+            result = o.getvalue()
+        expect = ("""\
+====== test: header #-1 ========================================================
+dset : test
+item : hoge[-]: testdata for TestGT3Header.pack(
+date : 2018-06-16(737226) with 0[DAYS]
+axis : GLON64[1:64] x GGLA32[1:32] x SFC1[1:1]
+cycl : False
+dfmt : UR4
+miss : -999.0
+size : 2048
+edit : ['edit0', 'edit1', 'edit2', 'edit3', 'edit4', 'edit5', 'edit6', 'edit7']
+ettl : ['etitle0', 'etitle1', 'etitle2', 'etitle3', 'etitle4', 'etitle5', 'etitle6', 'etitle7']
+memo : ['memo0', 'memo1', 'memo2', 'memo3', 'memo4', 'memo5', 'memo6', 'memo7', 'memo8', 'memo9']
+cdate: %s by pygt3 library
+mdate: %s by pygt3 library
+isize,jsize,ksize: 64, 32, 1
+================================================================================
+""" % (header.cdate, header.mdate))
+        self.assertMultiLineEqual(result, expect)
 
     def test_init_pack_02(self):
         """ __init__() and pack() GT3Header and hdarray """
@@ -103,7 +106,7 @@ class TestGT3Header(unittest.TestCase):
                            aitm2='GGLA32', astr2=1, aend2=32,
                            aitm3='SFC1', astr3=1, aend3=1,
                            memo=["memo%d" % n for n in range(10)])
-        expected = np.array(
+        expect = np.array(
             [b'            9010', b'test            ', b'hoge            ', b'edit0           ',
              b'edit1           ', b'edit2           ', b'                ', b'                ',
              b'                ', b'                ', b'                ', b'               1',
@@ -125,7 +128,7 @@ class TestGT3Header(unittest.TestCase):
 
         # Skip check of hdarray[59:],these are changed by time to time.
         for n in range(59):
-            self.assertEqual(expected[n], hdarray[n],
+            self.assertEqual(expect[n], hdarray[n],
                              msg="n=%d is mismatch !!" % n)
 
     def test_set_from_hdarray_pack_03(self):

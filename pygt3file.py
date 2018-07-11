@@ -7,6 +7,7 @@ import math
 import os
 import sys
 from collections import deque
+from contextlib import redirect_stdout
 # from datetime import datetime
 
 
@@ -351,46 +352,44 @@ class GT3Header:
                 self.memo.append(memo)
         pass
 
-    def dump(self, file=None):
+    def dump(self):
         """
         Output summarize of this instance.
-
-        If `file` is given, this is given to print() method.
         """
         if (self is not None):
             liner = '====== %s: header #%d ' % (self.fname, self.number)
             liner += "="*(80-len(liner))
-            print(liner, file=file)
-            print("dset : %s" % str(self.dset), file=file)
+            print(liner)
+            print("dset : %s" % str(self.dset))
             print("item : %s[%s]: %s"
-                  % (self.item, self.unit, self.titl), file=file)
+                  % (self.item, self.unit, self.titl))
             print("date : %s(%s) with %d[%s]" %
                   (self.date, str(self.time).split()[0],
-                   self.tdur, self.utim), file=file)
+                   self.tdur, self.utim))
             if (self.aitm3 != ''):
                 print("axis : %s[%d:%d] x %s[%d:%d] x %s[%d:%d]"
                       % (self.aitm1, self.astr1, self.aend1,
                          self.aitm2, self.astr2, self.aend2,
-                         self.aitm3, self.astr3, self.aend3), file=file)
+                         self.aitm3, self.astr3, self.aend3))
             elif (self.aitm2 != ''):
                 print("axis : %s[%d:%d] x %s[%d:%d]"
                       % (self.aitm1, self.astr1, self.aend1,
-                         self.aitm2, self.astr2, self.aend2), file=file)
+                         self.aitm2, self.astr2, self.aend2))
             else:
                 print("axis : %s[%d:%d]"
-                      % (self.aitm1, self.astr1, self.aend1), file=file)
-            print("cycl :", self.cyclic, file=file)
-            print("dfmt :", self.dfmt, file=file)
-            print("miss :", self.miss, file=file)
-            print("size :", self.size, file=file)
-            print("edit :", list(self.edit), file=file)
-            print("ettl :", list(self.ettl), file=file)
-            print("memo :", list(self.memo), file=file)
-            print("cdate: %s by %s" % (self.cdate, self.csign), file=file)
-            print("mdate: %s by %s" % (self.mdate, self.msign), file=file)
+                      % (self.aitm1, self.astr1, self.aend1))
+            print("cycl :", self.cyclic)
+            print("dfmt :", self.dfmt)
+            print("miss :", self.miss)
+            print("size :", self.size)
+            print("edit :", list(self.edit))
+            print("ettl :", list(self.ettl))
+            print("memo :", list(self.memo))
+            print("cdate: %s by %s" % (self.cdate, self.csign))
+            print("mdate: %s by %s" % (self.mdate, self.msign))
             print("isize,jsize,ksize: %d, %d, %d"
-                  % (self.isize, self.jsize, self.ksize), file=file)
-            print('=' * len(liner), file=file)
+                  % (self.isize, self.jsize, self.ksize))
+            print('=' * len(liner))
         pass
 
     def pack(self):
@@ -537,7 +536,7 @@ class GT3Data(np.ndarray):
         d = self[zidx[0]:zidx[1], yidx[0]:yidx[1], xidx[0]:xidx[1]]
         return xidx, yidx, zidx, d
 
-    def dump(self, file=None,
+    def dump(self,
              xidx=(), yidx=(), zidx=(),
              indexed=False, opt_debug=False, **kwargs):
 
@@ -551,34 +550,32 @@ class GT3Data(np.ndarray):
             liner += '#%d' % self.number
         liner += "="*(80-len(liner))
         if (opt_debug):
-            print("dbg:current_data:", file=file)
-            print("  flags:", file=file)
-            print(d.flags, file=file)
-            print("  dtype:", d.dtype, file=file)
+            print("dbg:current_data:")
+            print("  flags:")
+            print(d.flags)
+            print("  dtype:", d.dtype)
             print("  size,itemsize:",
-                  d.size, d.itemsize, file=file)
-            print("  xrange:", xidx, file=file)
-            print("  yrange:", yidx, file=file)
-            print("  zrange:", zidx, file=file)
+                  d.size, d.itemsize)
+            print("  xrange:", xidx)
+            print("  yrange:", yidx)
+            print("  zrange:", zidx)
             print("  ndim, shape, strides:",
                   d.ndim, d.shape,
-                  d.strides, file=file)
+                  d.strides)
         print(liner)
         if (len(kwargs) > 0):
             np.set_printoptions(**kwargs)
 
         if (indexed):
-            print("#%8s %8s %8s %20s" % ("xindex", "yindex", "zindex", "data"),
-                  file=file)
+            print("#%8s %8s %8s %20s" % ("xindex", "yindex", "zindex", "data"))
             for k in range(zidx[1]-zidx[0]):
                 for j in range(yidx[1]-yidx[0]):
                     for i in range(xidx[1]-xidx[0]):
                         print(" %8d %8d %8d %20f"
-                              % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]),
-                              file=file)
+                              % (i+xidx[0], j+yidx[0], k+zidx[0], d[k, j, i]))
         else:
-            print(d, file=file)
-        print('='*len(liner), file=file)
+            print(d)
+        print('='*len(liner))
 
         return None
 
@@ -596,6 +593,12 @@ class GT3File:
         self.mode = mode
         self.current_header = GT3Header()
         self.current_data = None
+        self.reset_attribs()
+
+        # self.packer = BitPacker()
+        return None
+
+    def reset_attribs(self):
         self.is_after_header = False
         self.is_eof = False
         self.num_of_data = -1
@@ -605,28 +608,24 @@ class GT3File:
         self.opt_debug = False
         self.opt_verbose = False
 
-        # self.packer = BitPacker()
-        return None
-
     def __enter__(self):
         return self
 
     def __exit__(self, type, value, traceback):
+        # print('GT3File.__exit__() called')
         self.close()
 
     def open(self, name, mode='rb'):
         """ re-open other file within the same instance. """
-        self.close()
+        self.f.close()
         self.f = open(name, mode)
         self.name = name
         self.mode = mode
-        self.is_after_header = False
-        self.is_eof = False
         return None
 
     def close(self):
         self.f.close()
-        self.name = ''
+        self.reset_attribs()
         return None
 
     def rewind(self):
@@ -638,9 +637,6 @@ class GT3File:
         self.current_header.number = -1
         return None
 
-    def dump(self):
-        raise NotImplementedError
-
     def scan(self):
         """
         Scan whole file and create data table.
@@ -651,21 +647,17 @@ class GT3File:
         tbl = []
         self.num_of_data = 0
         self.rewind()
-        while True:
-            self.read_one_header()
-            if (self.is_eof):
-                break
-            self.skip_one_data()
-            self.num_of_data += 1
-            tbl.append([self.current_header.item,
-                        int(str(self.current_header.time).split()[0]),
-                        self.current_header.tdur,
-                        self.current_header.utim,
-                        self.current_header.dfmt,
-                        self.current_header.date,
-                        self.current_header.aitm1,
-                        self.current_header.aitm2,
-                        self.current_header.aitm3])
+        for h, d in self.read(skip_data=True):
+            # self.num_of_data += 1
+            tbl.append([h.item,
+                        int(str(h.time).split()[0]),
+                        h.tdur,
+                        h.utim,
+                        h.dfmt,
+                        h.date,
+                        h.aitm1,
+                        h.aitm2,
+                        h.aitm3])
         self.rewind()
         self.table = pd.DataFrame(tbl)
         self.table.columns = ['item',
@@ -677,10 +669,7 @@ class GT3File:
                               'aitm1',
                               'aitm2',
                               'aitm3']
-        # self.num_of_times = self.table.pivot_table(
-        #     index='time', aggfunc=[len]).shape[0]
-        # self.num_of_items = self.table.pivot_table(
-        #     index='item', aggfunc=[len]).shape[0]
+        self.num_of_data = len(self.table.index)
         self.num_of_times = self.table['time'].nunique()
         self.num_of_items = self.table['item'].nunique()
 
@@ -695,18 +684,19 @@ class GT3File:
 
         return None
 
-    def show_table(self, file=None):
+    def show_table(self):
         """
         Show data table, created by scan().
         """
 
         if (self.table is None):
-            self.scan()
+            print("Error: call scan() before show_table()")
+            sys.exit(1)
         liner = "="*5 + " Data table: "
         liner += "="*(80-len(liner))
-        print(liner, file=file)
-        print(self.table.to_string(), file=file)
-        print("="*len(liner), file=file)
+        print(liner)
+        print(self.table.to_string())
+        print("="*len(liner))
 
         return None
 
