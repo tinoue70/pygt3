@@ -268,7 +268,7 @@ class GT3Header:
 
         self.fname = fname
         self.number = -1
-        self.set_hidden_attribs()
+        self._set_hidden_attribs()
 
         pass
 
@@ -422,13 +422,13 @@ class GT3Header:
         self.msign = hdarray[62].strip().decode('UTF-8')
         self.size = int(hdarray[63])
 
-        self.set_hidden_attribs()
+        self._set_hidden_attribs()
 
         if (fname is not None):
             self.fname = fname
         pass
 
-    def set_hidden_attribs(self):
+    def _set_hidden_attribs(self):
         """
         Set "hidden" attributes.
         """
