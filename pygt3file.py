@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Mini library to read/write GTOOL3 format file.
+"""
+
 from __future__ import print_function
 import numpy as np
 import pandas as pd
@@ -29,18 +33,95 @@ class InvalidArgumentError(Error):
 
 
 class BitPacker:
+    """Class for Bit Packing used in gt3.
+
+    This class contains several methods used to pack/unpack data for
+    gt3 datafile.
+
+    Packing method used in gt3 as dfmt 'URYxx' is to convert original
+    data to 'xx'-bit length integer data with scale/offset value, then
+    store them as a `base_bit_width` width integer data array.
+
+    For example, dfmt 'URY20' with `base_bit_width=32` means that each
+    element of original data array are converted 20-bit integer, and
+    stored as an 32-bit integer array. In this case, if original data
+    array has 8 elements, resulting converted data is 160 bits in
+    total, so at least 5 elements of 32-bit integer array is necessary
+    to store it.
+
+    Note
+    ----
+    Offset/scale coefficients are calculated by each k-index, so they
+    are stored as a integer array with shape of (2,KDIM), and written
+    prior to converted data in one entry for gt3 data.
+
+    """
+
     base_bit_width = 32
+    """
+    Base bit width of packed array, ie., packed data are stored as an
+    array of this bit length integer data.
+    """
 
     def calc_packed_length(olen, nbit):
+        """Calculate necessary length of packed array, for given original
+        array length and given converted bit width for each data.
+
+        Parameters
+        ----------
+        olen : int
+          Length of original data
+        nbit : int
+          Bit width for packed data
+
+        Returns
+        -------
+        int
+          Necessary length of conveted(packed) array.
+
+        Warnings
+        --------
+        Don't know why but first argument of this method is diminished
+        in the document created by sphinx(-_-"
+        """
 
         if (nbit > BitPacker.base_bit_width):
             raise InvalidArgumentError(nbit)
 
         return math.ceil(nbit*olen/BitPacker.base_bit_width)
 
+    def pack():
+        """Pack data.
+
+        TODO
+        ----
+          Not implemented.
+
+        """
+        pass
+
     def unpack(packed, pack_bit_width, len_unpacked):
-        """ From ndarray `packed` with packed width `pack_bit_width` extract values
-        return "int32" ndarray whose length is `len_unpacked`,"""
+        """Unpack data.
+
+        `pack_bit_width` is known from dfmt of gt3 header attribute,
+        and `len_unpacked` is calculated by `calc_packed_length()` of
+        this class.
+
+        Parameters
+        ----------
+        packed : numpy.ndarray
+          Packed data to be converted back.
+        pack_bit_width : int
+          Packing bit length
+        len_unpacked : int
+          Length of unpacked data array.
+
+        Warnings
+        --------
+        Don't know why but first argument of this method is diminished
+        in the document created by sphinx(-_-"
+
+        """
 
         mask = (1 << pack_bit_width) - 1
         unpacked = np.empty(len_unpacked, dtype='int32')
