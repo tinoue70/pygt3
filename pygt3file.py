@@ -159,16 +159,54 @@ class GT3Header:
 
     GTOOL3 format header is consist of
     `character(len=16,dimension=64)` array in Fortran, which I call
-    `hdarray` here. See 'XXX' for a complete list of it.
+    `hdarray` and implemented as `numpy.ndarray` with `dtype='a16'*16`
+    here.
 
-    This class is an abstraction of this information. All of elements
+    This class is an abstraction of these information. All of elements
     of `hdarray` are assigned as attributes of this class.
     Some of them are casted to integer and/or float type.
 
-    Note that three attributes, `ettl`, `edit` and `memo`, are
-    considered as a `queue` in original GTOOL3 format, and these are
-    implemented as `deque` class, with limited `maxlen`, of
+    Three attributes, `ettl`, `edit` and `memo`, are considered as a
+    `queue` in original GTOOL3 format specification, so these are
+    implemented as `deque` class (with limited `maxlen`) of
     `collections` package in this class.
+
+    Parameters
+    ----------
+        dset : str
+        item : str
+        title : str
+        unit : str
+        date : str or datetime.datetime
+        utim : str
+        time : int
+        tdur : int
+        aitm1 : str
+        astr1 : int
+        aend1 : int
+        aitm2 : str
+        astr2 : int
+        aend2 : int
+        aitm3 : str
+        astr3 : int
+        aend3 : int
+        dfmt : str
+        miss : float
+        dmin : float
+        dmax : float
+        divs : float
+        divl : float
+        edit : list or tuple of str
+        fnum : int
+        dnum : int
+        ettl : list or tuple of str
+        memo : list or tuple of str
+        fname : str
+
+    See Also
+    --------
+        add_attribs : add list type attributes, `edit`, `ettl`, `memo`.
+        set_time_date : Set and keep `date`,`time` and `utim` attributes consistently.
     """
 
     def __init__(self,
@@ -236,19 +274,29 @@ class GT3Header:
 
     def set_time_date(self, date=None, time=None, utim=None):
         """
-        Set and keep `date`,`time` and `utim` attributes consistently.
+        Set and keep `date`, `time` and `utim` attributes consistently.
 
-        `date` must be:
-        - 'compact' : 'YYYYMMDD HHMMSS' that is used in GTOOL3 header array,
-        - 'standard': 'YYYY-MM-DD HH-MM-SS' or acceptable by np.datetime64(),
-        - np.datetime64 instance.
+        If `date` is given, convert it to `time` (and vice versa),
+        then set to self.  If both are given, `time` is discarded even
+        if not `None`.
 
         According to the GTOOL3 specification, `time` field is counted
         from '0000/01/01 00:00:00', so we use np.datetime64 here.
 
+        Parameters
+        ----------
+        date : str or `numpy.datetime64` instance
+          `Date` attribute for gt3, must be;
 
-        If date is given, convert it to time, and vice versa, then set to self.
-        If both is given, time is discarded even if not None.
+          - 'compact' : 'YYYYMMDD HHMMSS' that is used in GTOOL3 header array,
+          - 'standard': 'YYYY-MM-DD HH-MM-SS' or acceptable by `numpy.datetime64(),`
+          - `numpy.datetime64` instance.
+
+        time : int
+          `time` attribute for gt3, must be acceptable by `numpy.timedelta64()`
+
+        utim : str
+          `utim` attribute for gt3, unit of `time`.
         """
 
         if (date is None and time is None):
@@ -298,13 +346,18 @@ class GT3Header:
 
     def set_from_hdarray(self, hdarray, fname=None):
         """
-        Set GT3Header from hdarray, which is an 'a16'*64 ndarray.
+        Set attributes from 'hdarray' at once.
 
-        In some of gtool3 datefile, such as axis, input data, etc.,
-        year in `date` field is set as 0000, which cannot be handled
-        by standard datetime module. So these are set as `None` here
-        tentatively.
+        Parameters
+        ----------
+        hdarray : numpy.ndarray(`dtype='a16'*64`)
+          gt3 header array
+
+        Todo
+        ----
+        Remove an argument `fname`.
         """
+
         self.dset = hdarray[1].strip().decode('UTF-8')
         self.item = hdarray[2].strip().decode('UTF-8')
         fnum = hdarray[11].strip().decode('UTF-8')
@@ -409,6 +462,11 @@ class GT3Header:
         single string or a list, each element must be 16 characters or
         less.
 
+        Parameters
+        ----------
+        ettl : str or list or tuple
+        edit : str or list or tuple
+        memo : str or list or tuple
         """
         if (ettl is not None):
             if (isinstance(ettl, list)):
@@ -477,6 +535,13 @@ class GT3Header:
         """
         Pack attribs of this instance to the array suitable for gtool3
         header and return it.
+
+        Return
+        ------
+        numpy.ndarray(dtype='a16'*64):
+           hdarray packs current attribues of this instance.
+
+
         """
         hdarray = np.zeros((64,), dtype='a16')
         hdarray[0] = "%16d" % 9010
