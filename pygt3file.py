@@ -612,11 +612,17 @@ class GT3Header:
 
 
 class GT3Data(np.ndarray):
-    """GT3Data class.
+    """Class for data part of gt3 file format.
 
     Implemented as a subclass of numpy.ndarray, adding some attributes
     and methods.
 
+    Attributes
+    ----------
+    name : str
+      name of this data
+    number : int
+      number in the gt3 file of this data
     """
 
     def __new__(subtype, shape, dtype=float, buffer=None, offset=0,
@@ -666,10 +672,18 @@ class GT3Data(np.ndarray):
 
     def select_data_range(self, xidx=(), yidx=(), zidx=()):
         """
-        Select data index range from current_data and return it.
+        Select data index range and return it.
 
         Index range is specified by a single integer to slice at it,
         or two element tuple or list to specify range.
+
+
+        Parameters
+        ---------
+        xidx : int or tuple
+        yidx : int or tuple
+        zidx : int or tuple
+
         """
         # print('dbg:', xidx, yidx, zidx)
         if (len(xidx) == 0):
@@ -685,7 +699,31 @@ class GT3Data(np.ndarray):
     def dump(self,
              xidx=(), yidx=(), zidx=(),
              indexed=False, opt_debug=False, **kwargs):
+        """
+        Output values.
 
+        If `xidx`, `yidx`, `zidx` are given, slice or subpart of the
+        array is output.
+
+        If `indexed` is  given, each value is output with i,j,k-indices.
+
+        Parameters
+        ----------
+        xidx : int or tuple
+        yidx : int or tuple
+        zidx : int or tuple
+        indexed : bool
+        opt_debug : bool
+
+        Todo
+        ----
+        Use `kwargs` to control print format
+
+        See Also
+        --------
+        select_data_range : Select data index range and return it.
+
+        """
         np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
 
         xidx, yidx, zidx, d = self.select_data_range(xidx, yidx, zidx)
