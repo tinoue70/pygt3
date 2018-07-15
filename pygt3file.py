@@ -1141,11 +1141,44 @@ class GT3File:
 ###############################################################################
 class GT3Axis():
     """
-    gtool3 axis.
+    Special purpose class for gt3 axis file.
+
+    This class is to get and gt3 axis data.
+    Find axis file with given axis  `name` from `search_path`.
+
+    Parameters
+    ----------
+    name : str
+      Axis name, such as `GLON64` etc.
+    search_path : list of str
+      Seach path for axis file. It can contain environment variables.
+
+    Attributes
+    ----------
+    name : str
+      Axis name, such as `GLON64` etc.
+    search_path : list of str
+      Seach path for axis file. It can contain environment variables.
+      Current default path is specified by `default_search_paths`.
+    file : str
+      Filename of axis file.
+    title : str
+      title of axis, such as `longitude` etc.
+    unit : str
+      unit of axis data
+    size : int
+      length of axis
+    header : GT3Header.
+      Gt3 header part of axis file.
+    data : GT3Data.
+      Gt3 data part of axis file.
     """
 
     default_search_paths = [u".", u"$GT3AXISDIR", u"$GTOOLDIR/gt3"]
-
+    """
+    Default list of `search_path`
+    """
+    
     def __init__(self, name, search_paths=None):
         self.name = name
         if (search_paths is None):
@@ -1175,12 +1208,12 @@ class GT3Axis():
 
     def find_axfile(self):
         """
-        Find gtool3 axis file.
+        Find gtool3 axis file with given axis `name` from path listed
+        as `self.search_paths`.
 
-        With given axis name `name` from path listed as
-        `self.search_paths`.
-
-        Return path of the found axis file or `None` unless found.
+        Return
+        ------
+          str or None : path of the found axis file or `None` unless found.
         """
         axis_path = map(os.path.expandvars, self.search_paths)
         axis_path = [a for a in axis_path if os.path.exists(a)]
@@ -1202,6 +1235,9 @@ class GT3Axis():
         pass
 
     def dump(self, file=None):
+        """
+        Output summarize of this instance.
+        """
         liner = '='*6 + ' Axis: %s ' % self.name
         liner += '='*(80-len(liner))
         print(liner, file=file)
