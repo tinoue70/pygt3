@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Mini library to read/write GTOOL3 format file.
+"""
+
 from __future__ import print_function
 import numpy as np
 import pandas as pd
@@ -29,18 +33,95 @@ class InvalidArgumentError(Error):
 
 
 class BitPacker:
+    """Class for Bit Packing used in gt3.
+
+    This class contains several methods used to pack/unpack data for
+    gt3 datafile.
+
+    Packing method used in gt3 as dfmt 'URYxx' is to convert original
+    data to 'xx'-bit length integer data with scale/offset value, then
+    store them as a `base_bit_width` width integer data array.
+
+    For example, dfmt 'URY20' with `base_bit_width=32` means that each
+    element of original data array are converted 20-bit integer, and
+    stored as an 32-bit integer array. In this case, if original data
+    array has 8 elements, resulting converted data is 160 bits in
+    total, so at least 5 elements of 32-bit integer array is necessary
+    to store it.
+
+    Note
+    ----
+    Offset/scale coefficients are calculated by each k-index, so they
+    are stored as a integer array with shape of (2,KDIM), and written
+    prior to converted data in one entry for gt3 data.
+
+    """
+
     base_bit_width = 32
+    """
+    Base bit width of packed array, ie., packed data are stored as an
+    array of this bit length integer data.
+    """
 
     def calc_packed_length(olen, nbit):
+        """Calculate necessary length of packed array, for given original
+        array length and given converted bit width for each data.
+
+        Parameters
+        ----------
+        olen : int
+          Length of original data
+        nbit : int
+          Bit width for packed data
+
+        Returns
+        -------
+        int
+          Necessary length of conveted(packed) array.
+
+        Warnings
+        --------
+        Don't know why but first argument of this method is diminished
+        in the document created by sphinx(-_-"
+        """
 
         if (nbit > BitPacker.base_bit_width):
             raise InvalidArgumentError(nbit)
 
         return math.ceil(nbit*olen/BitPacker.base_bit_width)
 
+    def pack():
+        """Pack data.
+
+        TODO
+        ----
+          Not implemented.
+
+        """
+        pass
+
     def unpack(packed, pack_bit_width, len_unpacked):
-        """ From ndarray `packed` with packed width `pack_bit_width` extract values
-        return "int32" ndarray whose length is `len_unpacked`,"""
+        """Unpack data.
+
+        `pack_bit_width` is known from dfmt of gt3 header attribute,
+        and `len_unpacked` is calculated by `calc_packed_length()` of
+        this class.
+
+        Parameters
+        ----------
+        packed : numpy.ndarray
+          Packed data to be converted back.
+        pack_bit_width : int
+          Packing bit length
+        len_unpacked : int
+          Length of unpacked data array.
+
+        Warnings
+        --------
+        Don't know why but first argument of this method is diminished
+        in the document created by sphinx(-_-"
+
+        """
 
         mask = (1 << pack_bit_width) - 1
         unpacked = np.empty(len_unpacked, dtype='int32')
@@ -78,16 +159,54 @@ class GT3Header:
 
     GTOOL3 format header is consist of
     `character(len=16,dimension=64)` array in Fortran, which I call
-    `hdarray` here. See 'XXX' for a complete list of it.
+    `hdarray` and implemented as `numpy.ndarray` with `dtype='a16'*16`
+    here.
 
-    This class is an abstraction of this information. All of elements
+    This class is an abstraction of these information. All of elements
     of `hdarray` are assigned as attributes of this class.
     Some of them are casted to integer and/or float type.
 
-    Note that three attributes, `ettl`, `edit` and `memo`, are
-    considered as a `queue` in original GTOOL3 format, and these are
-    implemented as `deque` class, with limited `maxlen`, of
+    Three attributes, `ettl`, `edit` and `memo`, are considered as a
+    `queue` in original GTOOL3 format specification, so these are
+    implemented as `deque` class (with limited `maxlen`) of
     `collections` package in this class.
+
+    Parameters
+    ----------
+        dset : str
+        item : str
+        title : str
+        unit : str
+        date : str or datetime.datetime
+        utim : str
+        time : int
+        tdur : int
+        aitm1 : str
+        astr1 : int
+        aend1 : int
+        aitm2 : str
+        astr2 : int
+        aend2 : int
+        aitm3 : str
+        astr3 : int
+        aend3 : int
+        dfmt : str
+        miss : float
+        dmin : float
+        dmax : float
+        divs : float
+        divl : float
+        edit : list or tuple of str
+        fnum : int
+        dnum : int
+        ettl : list or tuple of str
+        memo : list or tuple of str
+        fname : str
+
+    See Also
+    --------
+        add_attribs : add list type attributes, `edit`, `ettl`, `memo`.
+        set_time_date : Set and keep `date`,`time` and `utim` attributes consistently.
     """
 
     def __init__(self,
@@ -149,25 +268,35 @@ class GT3Header:
 
         self.fname = fname
         self.number = -1
-        self.set_hidden_attribs()
+        self._set_hidden_attribs()
 
         pass
 
     def set_time_date(self, date=None, time=None, utim=None):
         """
-        Set and keep `date`,`time` and `utim` attributes consistently.
+        Set and keep `date`, `time` and `utim` attributes consistently.
 
-        `date` must be:
-        - 'compact' : 'YYYYMMDD HHMMSS' that is used in GTOOL3 header array,
-        - 'standard': 'YYYY-MM-DD HH-MM-SS' or acceptable by np.datetime64(),
-        - np.datetime64 instance.
+        If `date` is given, convert it to `time` (and vice versa),
+        then set to self.  If both are given, `time` is discarded even
+        if not `None`.
 
         According to the GTOOL3 specification, `time` field is counted
         from '0000/01/01 00:00:00', so we use np.datetime64 here.
 
+        Parameters
+        ----------
+        date : str or `numpy.datetime64` instance
+          `Date` attribute for gt3, must be;
 
-        If date is given, convert it to time, and vice versa, then set to self.
-        If both is given, time is discarded even if not None.
+          - 'compact' : 'YYYYMMDD HHMMSS' that is used in GTOOL3 header array,
+          - 'standard': 'YYYY-MM-DD HH-MM-SS' or acceptable by `numpy.datetime64(),`
+          - `numpy.datetime64` instance.
+
+        time : int
+          `time` attribute for gt3, must be acceptable by `numpy.timedelta64()`
+
+        utim : str
+          `utim` attribute for gt3, unit of `time`.
         """
 
         if (date is None and time is None):
@@ -217,13 +346,18 @@ class GT3Header:
 
     def set_from_hdarray(self, hdarray, fname=None):
         """
-        Set GT3Header from hdarray, which is an 'a16'*64 ndarray.
+        Set attributes from 'hdarray' at once.
 
-        In some of gtool3 datefile, such as axis, input data, etc.,
-        year in `date` field is set as 0000, which cannot be handled
-        by standard datetime module. So these are set as `None` here
-        tentatively.
+        Parameters
+        ----------
+        hdarray : numpy.ndarray(`dtype='a16'*64`)
+          gt3 header array
+
+        Todo
+        ----
+        Remove an argument `fname`.
         """
+
         self.dset = hdarray[1].strip().decode('UTF-8')
         self.item = hdarray[2].strip().decode('UTF-8')
         fnum = hdarray[11].strip().decode('UTF-8')
@@ -288,13 +422,13 @@ class GT3Header:
         self.msign = hdarray[62].strip().decode('UTF-8')
         self.size = int(hdarray[63])
 
-        self.set_hidden_attribs()
+        self._set_hidden_attribs()
 
         if (fname is not None):
             self.fname = fname
         pass
 
-    def set_hidden_attribs(self):
+    def _set_hidden_attribs(self):
         """
         Set "hidden" attributes.
         """
@@ -328,6 +462,11 @@ class GT3Header:
         single string or a list, each element must be 16 characters or
         less.
 
+        Parameters
+        ----------
+        ettl : str or list or tuple
+        edit : str or list or tuple
+        memo : str or list or tuple
         """
         if (ettl is not None):
             if (isinstance(ettl, list)):
@@ -396,6 +535,13 @@ class GT3Header:
         """
         Pack attribs of this instance to the array suitable for gtool3
         header and return it.
+
+        Return
+        ------
+        numpy.ndarray(dtype='a16'*64):
+           hdarray packs current attribues of this instance.
+
+
         """
         hdarray = np.zeros((64,), dtype='a16')
         hdarray[0] = "%16d" % 9010
@@ -466,11 +612,17 @@ class GT3Header:
 
 
 class GT3Data(np.ndarray):
-    """GT3Data class.
+    """Class for data part of gt3 file format.
 
     Implemented as a subclass of numpy.ndarray, adding some attributes
     and methods.
 
+    Attributes
+    ----------
+    name : str
+      name of this data
+    number : int
+      number in the gt3 file of this data
     """
 
     def __new__(subtype, shape, dtype=float, buffer=None, offset=0,
@@ -520,10 +672,18 @@ class GT3Data(np.ndarray):
 
     def select_data_range(self, xidx=(), yidx=(), zidx=()):
         """
-        Select data index range from current_data and return it.
+        Select data index range and return it.
 
         Index range is specified by a single integer to slice at it,
         or two element tuple or list to specify range.
+
+
+        Parameters
+        ---------
+        xidx : int or tuple
+        yidx : int or tuple
+        zidx : int or tuple
+
         """
         # print('dbg:', xidx, yidx, zidx)
         if (len(xidx) == 0):
@@ -539,7 +699,31 @@ class GT3Data(np.ndarray):
     def dump(self,
              xidx=(), yidx=(), zidx=(),
              indexed=False, opt_debug=False, **kwargs):
+        """
+        Output values.
 
+        If `xidx`, `yidx`, `zidx` are given, slice or subpart of the
+        array is output.
+
+        If `indexed` is  given, each value is output with i,j,k-indices.
+
+        Parameters
+        ----------
+        xidx : int or tuple
+        yidx : int or tuple
+        zidx : int or tuple
+        indexed : bool
+        opt_debug : bool
+
+        Todo
+        ----
+        Use `kwargs` to control print format
+
+        See Also
+        --------
+        select_data_range : Select data index range and return it.
+
+        """
         np.set_printoptions(threshold=np.inf, linewidth=100, suppress=True)
 
         xidx, yidx, zidx, d = self.select_data_range(xidx, yidx, zidx)
@@ -582,7 +766,51 @@ class GT3Data(np.ndarray):
 
 ######################################################################
 class GT3File:
-    """ Class for abstracting GTOOL3 file."""
+    """
+    Class for abstracting GTOOL3 file.
+
+    Main class for gt3 file handling.
+
+    After the creation of an instance, use `open` to open gt3
+    file.
+
+    Parameters
+    ----------
+    name : str
+       filename to open
+    mode : str
+       mode to open file, must be `rb` or `wb` only.
+
+    Attributes
+    ----------
+    name : str
+      Gt3 filename
+    mode : str
+      Mode to open file, must be `rb` or `wb` only
+    f    : file object
+      Opened gt3 file
+    current_header : GT3Header
+      Gt3 header of current data entry.
+    current_data : GT3Data
+      Gt3 data of current data entry.
+    is_after_header : bool
+      `True` if current file position is just after a header.
+    is_eof : bool
+      `True` if EOF reached.
+    num_of_data : int
+      Total number of data in the file.
+    num_of_times : int
+      Total number of timesteps in the file.
+    num_of_items : int
+      Total number of items in the file
+    table : pandas.DataFrame
+      Table to summerize the contents of the file.
+    opt_debug : bool
+      Debug mode for the methods.
+    opt_verbose : bool
+      Verbose mode for the methods.
+
+    """
     def __init__(self, name, mode='rb'):
         if (mode == 'rb' or mode == 'wb'):
             pass
@@ -616,7 +844,7 @@ class GT3File:
         self.close()
 
     def open(self, name, mode='rb'):
-        """ re-open other file within the same instance. """
+        """ Re-open other file within the same instance. """
         self.f.close()
         self.f = open(name, mode)
         self.name = name
@@ -624,11 +852,13 @@ class GT3File:
         return None
 
     def close(self):
+        """ Close file. """
         self.f.close()
         self.reset_attribs()
         return None
 
     def rewind(self):
+        """ Rewind file to the top."""
         self.f.seek(0)
         self.current_header = GT3Header()
         self.current_data = None
@@ -702,7 +932,7 @@ class GT3File:
 
     def read_one_header(self):
         """
-        Read one header and it as a `current_header`.
+        Read one header and save it as a `current_header`.
         """
 
         dt = np.dtype(
@@ -724,6 +954,9 @@ class GT3File:
         return None
 
     def read_one_data(self):
+        """
+        Read one data and save it as a `current_data`.
+        """
         if (self.current_header.dfmt[:3] == 'UR8'):
             dt = np.dtype([
                 ("h", ">i4"),
@@ -793,6 +1026,8 @@ class GT3File:
         return None
 
     def skip_one_data(self):
+        """Skip one data to the next entry"""
+
         if (not self.is_after_header):
             self.read_one_header()
         if (self.current_header is None):
@@ -820,10 +1055,12 @@ class GT3File:
         return None
 
     def dump_current_header(self):
+        """Output current header"""
         self.current_header.dump()
         return None
 
     def dump_current_data(self, **kwargs):
+        """Output current data."""
         self.current_data.dump(**kwargs)
         return None
 
@@ -831,7 +1068,14 @@ class GT3File:
         """
         Read and return `num`-th header and data as a tuple.
 
-        If not found, return (None, None).
+        Parameter
+        ---------
+        num : int
+           Read `num`-th header and data.
+
+        Returns
+        -------
+           tuple of (GT3Header, GT3Data), or if not found, return (None, None).
         """
 
         self.rewind()
@@ -858,7 +1102,7 @@ class GT3File:
 
     def write_one_header(self):
         """
-        Write `self.current_header` as one header.
+        Write `current_header` to the file.
         """
 
         dt = np.dtype([
@@ -873,6 +1117,14 @@ class GT3File:
         self.if_after_header = True
 
     def set_current_data(self, d):
+        """
+        Set `current_data` from numpy.ndarray
+
+        Parameter
+        ---------
+        d : numpy.ndarray
+           data to be set.
+        """
         if (d.shape != self.current_header.shape):
             print("Error: shape mismatch!")
             print("in header:", self.current_header.shape)
@@ -882,6 +1134,9 @@ class GT3File:
         pass
 
     def write_one_data(self):
+        """
+        Write `current_data` to the file
+        """
         if (self.current_header.dfmt[:3] == 'UR4'):
             dt = np.dtype([
                 ("h", ">i4"),
@@ -957,11 +1212,44 @@ class GT3File:
 ###############################################################################
 class GT3Axis():
     """
-    gtool3 axis.
+    Special purpose class for gt3 axis file.
+
+    This class is to get and gt3 axis data.
+    Find axis file with given axis  `name` from `search_path`.
+
+    Parameters
+    ----------
+    name : str
+      Axis name, such as `GLON64` etc.
+    search_path : list of str
+      Seach path for axis file. It can contain environment variables.
+
+    Attributes
+    ----------
+    name : str
+      Axis name, such as `GLON64` etc.
+    search_path : list of str
+      Seach path for axis file. It can contain environment variables.
+      Current default path is specified by `default_search_paths`.
+    file : str
+      Filename of axis file.
+    title : str
+      title of axis, such as `longitude` etc.
+    unit : str
+      unit of axis data
+    size : int
+      length of axis
+    header : GT3Header.
+      Gt3 header part of axis file.
+    data : GT3Data.
+      Gt3 data part of axis file.
     """
 
     default_search_paths = [u".", u"$GT3AXISDIR", u"$GTOOLDIR/gt3"]
-
+    """
+    Default list of `search_path`
+    """
+    
     def __init__(self, name, search_paths=None):
         self.name = name
         if (search_paths is None):
@@ -991,12 +1279,12 @@ class GT3Axis():
 
     def find_axfile(self):
         """
-        Find gtool3 axis file.
+        Find gtool3 axis file with given axis `name` from path listed
+        as `self.search_paths`.
 
-        With given axis name `name` from path listed as
-        `self.search_paths`.
-
-        Return path of the found axis file or `None` unless found.
+        Return
+        ------
+          str or None : path of the found axis file or `None` unless found.
         """
         axis_path = map(os.path.expandvars, self.search_paths)
         axis_path = [a for a in axis_path if os.path.exists(a)]
@@ -1018,6 +1306,9 @@ class GT3Axis():
         pass
 
     def dump(self, file=None):
+        """
+        Output summarize of this instance.
+        """
         liner = '='*6 + ' Axis: %s ' % self.name
         liner += '='*(80-len(liner))
         print(liner, file=file)
