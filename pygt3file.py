@@ -766,7 +766,51 @@ class GT3Data(np.ndarray):
 
 ######################################################################
 class GT3File:
-    """ Class for abstracting GTOOL3 file."""
+    """
+    Class for abstracting GTOOL3 file.
+
+    Main class for gt3 file handling.
+
+    After the creation of an instance, use `open` to open gt3
+    file.
+
+    Parameters
+    ----------
+    name : str
+       filename to open
+    mode : str
+       mode to open file, must be `rb` or `wb` only.
+
+    Attributes
+    ----------
+    name : str
+      Gt3 filename
+    mode : str
+      Mode to open file, must be `rb` or `wb` only
+    f    : file object
+      Opened gt3 file
+    current_header : GT3Header
+      Gt3 header of current data entry.
+    current_data : GT3Data
+      Gt3 data of current data entry.
+    is_after_header : bool
+      `True` if current file position is just after a header.
+    is_eof : bool
+      `True` if EOF reached.
+    num_of_data : int
+      Total number of data in the file.
+    num_of_times : int
+      Total number of timesteps in the file.
+    num_of_items : int
+      Total number of items in the file
+    table : pandas.DataFrame
+      Table to summerize the contents of the file.
+    opt_debug : bool
+      Debug mode for the methods.
+    opt_verbose : bool
+      Verbose mode for the methods.
+
+    """
     def __init__(self, name, mode='rb'):
         if (mode == 'rb' or mode == 'wb'):
             pass
@@ -800,7 +844,7 @@ class GT3File:
         self.close()
 
     def open(self, name, mode='rb'):
-        """ re-open other file within the same instance. """
+        """ Re-open other file within the same instance. """
         self.f.close()
         self.f = open(name, mode)
         self.name = name
@@ -808,11 +852,13 @@ class GT3File:
         return None
 
     def close(self):
+        """ Close file. """
         self.f.close()
         self.reset_attribs()
         return None
 
     def rewind(self):
+        """ Rewind file to the top."""
         self.f.seek(0)
         self.current_header = GT3Header()
         self.current_data = None
@@ -886,7 +932,7 @@ class GT3File:
 
     def read_one_header(self):
         """
-        Read one header and it as a `current_header`.
+        Read one header and save it as a `current_header`.
         """
 
         dt = np.dtype(
@@ -908,6 +954,9 @@ class GT3File:
         return None
 
     def read_one_data(self):
+        """
+        Read one data and save it as a `current_data`.
+        """
         if (self.current_header.dfmt[:3] == 'UR8'):
             dt = np.dtype([
                 ("h", ">i4"),
@@ -977,6 +1026,8 @@ class GT3File:
         return None
 
     def skip_one_data(self):
+        """Skip one data to the next entry"""
+
         if (not self.is_after_header):
             self.read_one_header()
         if (self.current_header is None):
@@ -1004,10 +1055,12 @@ class GT3File:
         return None
 
     def dump_current_header(self):
+        """Output current header"""
         self.current_header.dump()
         return None
 
     def dump_current_data(self, **kwargs):
+        """Output current data."""
         self.current_data.dump(**kwargs)
         return None
 
@@ -1015,7 +1068,14 @@ class GT3File:
         """
         Read and return `num`-th header and data as a tuple.
 
-        If not found, return (None, None).
+        Parameter
+        ---------
+        num : int
+           Read `num`-th header and data.
+
+        Returns
+        -------
+           tuple of (GT3Header, GT3Data), or if not found, return (None, None).
         """
 
         self.rewind()
@@ -1042,7 +1102,7 @@ class GT3File:
 
     def write_one_header(self):
         """
-        Write `self.current_header` as one header.
+        Write `current_header` to the file.
         """
 
         dt = np.dtype([
@@ -1057,6 +1117,14 @@ class GT3File:
         self.if_after_header = True
 
     def set_current_data(self, d):
+        """
+        Set `current_data` from numpy.ndarray
+
+        Parameter
+        ---------
+        d : numpy.ndarray
+           data to be set.
+        """
         if (d.shape != self.current_header.shape):
             print("Error: shape mismatch!")
             print("in header:", self.current_header.shape)
@@ -1066,6 +1134,9 @@ class GT3File:
         pass
 
     def write_one_data(self):
+        """
+        Write `current_data` to the file
+        """
         if (self.current_header.dfmt[:3] == 'UR4'):
             dt = np.dtype([
                 ("h", ">i4"),
